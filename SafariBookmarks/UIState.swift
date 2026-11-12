@@ -1,0 +1,102 @@
+import Foundation
+import Observation
+
+/// Stan interfejsu wspólny dla okna i menu.
+@Observable
+final class UIState {
+    enum Sheet: Identifiable {
+        case move(Set<String>)
+        case rename(String)
+        case info(String)
+        case backups
+
+        var id: String {
+            switch self {
+            case .move: "move"
+            case .rename: "rename"
+            case .info: "info"
+            case .backups: "backups"
+            }
+        }
+    }
+
+    /// Folder wybrany w drzewie po lewej.
+    var folderID: String?
+    /// Zaznaczenie na liście po prawej.
+    var selection: Set<String> = []
+    var query = ""
+    var sheet: Sheet?
+    var deleteRequest: Set<String>?
+    var confirmReload = false
+    /// Pytanie „Zapisać zmiany?”.
+    var confirmSave = false
+    /// Zwykły komunikat systemowy (tytuł + treść).
+    var message: Message?
+    /// Krótkie potwierdzenie, które samo znika.
+    var toast: String?
+
+    struct Message: Identifiable {
+        let title: String
+        let text: String
+        var id: String { title + text }
+    }
+
+    /// Przycisk „Zapisz”: najpierw sprawdzenia, potem pytanie.
+    func requestSave(_ store: BookmarkStore) {
+        guard store.hasChanges, !store.isWriting else { return }
+        if store.safariBlocksSaving {
+            message = Message(title: L("Najpierw zamknij Safari", "Quit Safari first"),
+                              text: L("Zmiany można zapisać dopiero po zamknięciu Safari. Aplikacja sama go nie zamyka.",
+                                      "Changes can only be saved after Safari is closed. The app does not quit Safari by itself."))
+            return
+        }
+        let problems = store.verify()
+        if !problems.isEmpty {
+            message = Message(title: L("Nie można zapisać", "Cannot save"), text: problems.joined(separator: "\n"))
+            return
+        }
+        confirmSave = true
+    }
+
+    func performSave(_ store: BookmarkStore) {
+        Task {
+            switch await store.save() {
+            case .ok: showToast(L("Zapisano", "Saved"))
+            case .failed(let text): message = Message(title: L("Nie zapisano", "Not saved"), text: text)
+            }
+        }
+    }
+
+    func performRestore(_ backup: Backup, store: BookmarkStore) {
+        Task {
+            switch await store.restore(backup) {
+            case .ok: showToast(L("Przywrócono zakładki z kopii", "Bookmarks restored from backup"))
+            case .failed(let text): message = Message(title: L("Nie przywrócono", "Not restored"), text: text)
+            }
+        }
+    }
+
+    func showToast(_ text: String) {
+        toast = text
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            if toast == text { toast = nil }
+        }
+    }
+
+    var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+    var singleSelection: String? { selection.count == 1 ? selection.first : nil }
+
+    /// Otwiera folder zawierający element i zaznacza go.
+    func reveal(_ id: String, in tree: BookmarkTree) {
+        query = ""
+        folderID = tree.parent[id]
+        selection = [id]
+    }
+
+    func open(folder id: String) {
+        query = ""
+        folderID = id
+        selection = []
+    }
+}

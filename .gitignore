@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Build output (build.sh builds into build/)
+build/
+DerivedData/
+*.dSYM
+*.dSYM.zip
+
+# Local signing settings (development team), see Signing.xcconfig
+Local.xcconfig
