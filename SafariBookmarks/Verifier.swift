@@ -21,6 +21,8 @@ enum Verifier {
         var added: [String: Int] = [:]
         /// Ile nowych zakładek dodał użytkownik.
         var addedLeaves = 0
+        /// Wpisy dla iCloud dosłane ze starych zapisów (Token).
+        var resent: Set<String> = []
         var leaves = 0
         var missingUUID = 0
 
@@ -176,6 +178,14 @@ enum Verifier {
             let added = prefixOK ? Array(new.changes.dropFirst(old.changes.count)) : []
             let badEntry = added.contains { e in
                 guard let uuid = e["BookmarkUUID"] as? String else { return true }
+                // Dosłane stare zmiany: przeniesienie/nazwa istniejącego elementu albo usunięcie elementu, którego już nie ma.
+                if let token = e["Token"] as? String, removed.resent.contains(token) {
+                    switch e["Type"] as? String {
+                    case "Modify": return old.uuidCounts[uuid] != 1 || new.uuidCounts[uuid] != 1
+                    case "Delete": return old.uuidCounts[uuid] != nil || new.uuidCounts[uuid] != nil
+                    default: return true
+                    }
+                }
                 if e["Type"] as? String == "Add" {
                     return removed.added[uuid] == nil || old.uuidCounts[uuid] != nil || new.uuidCounts[uuid] != 1
                 }

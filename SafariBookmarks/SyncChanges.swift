@@ -38,7 +38,7 @@ enum SyncChanges {
 
     // MARK: - Porównanie drzew
 
-    private struct Place {
+    struct Place {
         let node: NSDictionary
         let parent: String?
         let index: Int
@@ -46,7 +46,7 @@ enum SyncChanges {
 
     /// Węzły z unikalnym UUID: UUID → miejsce. `order` – rodzic przed dziećmi,
     /// `postOrder` – dzieci przed rodzicem (kolejność usuwania w Safari).
-    private static func index(_ root: NSDictionary) -> (places: [String: Place], order: [String], postOrder: [String]) {
+    static func index(_ root: NSDictionary) -> (places: [String: Place], order: [String], postOrder: [String]) {
         var counts: [String: Int] = [:]
         var places: [String: Place] = [:]
         var order: [String] = []
@@ -130,7 +130,7 @@ enum SyncChanges {
         return adds + moves + renames + deletes
     }
 
-    private static func entry(type: String, bookmarkType: String, node: NSDictionary, extra: [String: Any]) -> NSDictionary {
+    static func entry(type: String, bookmarkType: String, node: NSDictionary, extra: [String: Any]) -> NSDictionary {
         let d = NSMutableDictionary(dictionary: extra)
         d["Token"] = UUID().uuidString
         d["Type"] = type
@@ -140,7 +140,7 @@ enum SyncChanges {
         return d
     }
 
-    private static func bookmarkType(_ node: NSDictionary) -> String? {
+    static func bookmarkType(_ node: NSDictionary) -> String? {
         switch node["WebBookmarkType"] as? String {
         case "WebBookmarkTypeLeaf": "Leaf"
         case "WebBookmarkTypeList": "Folder"

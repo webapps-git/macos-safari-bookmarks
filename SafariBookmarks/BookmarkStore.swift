@@ -447,6 +447,46 @@ final class BookmarkStore {
         }
     }
 
+    // MARK: - Dosłanie starych zmian do iCloud
+
+    /// Zmiany zapisane wersją 1.0.0, których iCloud nie dostał (z kopii zapasowych).
+    func resendPlan() -> Result<ResendChanges.Plan, Error> {
+        guard let original else { return .failure(OperationError(L("Brak wczytanych zakładek.", "No bookmarks loaded."))) }
+        guard SyncChanges.isSynced(original) else { return .failure(ResendChanges.PlanError.notSynced) }
+        let urls = (try? FileManager.default.contentsOfDirectory(at: Backups.directory, includingPropertiesForKeys: nil)) ?? []
+        let log = try? String(contentsOf: logURL, encoding: .utf8)
+        if log?.contains(ResendChanges.logMarker) == true { return .failure(ResendChanges.PlanError.alreadySent) }
+        let chain = ResendChanges.chain(backups: urls, log: log)
+        guard let first = chain.urls.first else { return .failure(ResendChanges.PlanError.noBackups) }
+        var states: [NSDictionary] = []
+        for url in chain.urls {
+            guard let data = try? Data(contentsOf: url),
+                  let dict = try? PropertyListSerialization.propertyList(from: data, format: nil) as? NSDictionary else {
+                return .failure(ResendChanges.PlanError.unreadable(url.lastPathComponent))
+            }
+            states.append(dict)
+        }
+        // Okres 1.0.0 trwa do dziś – ostatnim stanem są obecne zakładki.
+        if !chain.closed { states.append(original) }
+        var plan = ResendChanges.plan(states: states, current: original)
+        plan.since = ResendChanges.date(ofBackup: first)
+        return .success(plan)
+    }
+
+    /// Dopisuje stare zmiany do listy dla iCloud. Zakładki się nie zmieniają; trafi to do iCloud przy zapisie.
+    func resend(_ plan: ResendChanges.Plan) {
+        guard !plan.isEmpty, !hasChanges else { return }
+        perform(L("Stare zmiany do wysłania do iCloud (\(plan.entries.count))", "Old changes to send to iCloud (\(plan.entries.count))")) {
+            guard let root else { throw OperationError(L("Brak wczytanych zakładek.", "No bookmarks loaded.")) }
+            let sync = NSMutableDictionary(dictionary: root["Sync"] as? NSDictionary ?? [:])
+            let list = NSMutableArray(array: sync[SyncChanges.key] as? [Any] ?? [])
+            list.addObjects(from: plan.entries)
+            sync[SyncChanges.key] = list
+            root["Sync"] = sync
+            removed.resent.formUnion(plan.tokens)
+        }
+    }
+
     // MARK: - Cofanie
 
     func undo() { step(from: &undoStack, to: &redoStack) }
@@ -493,10 +533,12 @@ final class BookmarkStore {
     /// Trwa zapis albo przywracanie.
     private(set) var isWriting = false
 
+    private var logURL: URL { Backups.directory.deletingLastPathComponent().appending(path: "log.txt") }
+
     /// Dziennik zapisów (dla diagnozy, bez pokazywania w aplikacji).
     private func log(_ s: String) {
         let line = "\(Date.now.formatted(date: .numeric, time: .standard))  \(s)\n"
-        let url = Backups.directory.deletingLastPathComponent().appending(path: "log.txt")
+        let url = logURL
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         if let h = try? FileHandle(forWritingTo: url) {
             h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close()
@@ -528,9 +570,13 @@ final class BookmarkStore {
         log("SAVE: " + history.joined(separator: "; "))
         log("  iCloud changes: \(syncCount)")
         let removedSnapshot = removed
-        return await write(data, expectedHash: baseline.fileHash) { written in
+        let result = await write(data, expectedHash: baseline.fileHash) { written in
             Verifier.check(candidate: written, against: baseline, removed: removedSnapshot, syncMayChange: true)
         }
+        if case .ok = result, !removedSnapshot.resent.isEmpty {
+            log("  \(ResendChanges.logMarker) \(removedSnapshot.resent.count)")
+        }
+        return result
     }
 
     /// Przywrócenie kopii zapasowej.

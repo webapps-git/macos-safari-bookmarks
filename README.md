@@ -4,6 +4,18 @@ A bookmark manager for Safari on macOS. Move, rename, sort and delete bookmarks 
 
 Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folders. Safari Bookmarks works on Safari's bookmarks file directly, checks every change before it is written and keeps a backup of each previous version.
 
+## ⚠️ Unsolved problem: changes reach iCloud only after an edit in Safari
+
+Changes saved in the app reach iCloud and your other devices only after you **make any small change to your bookmarks in Safari itself** (for example, move a bookmark down and back). Until then they wait in the bookmarks file on the Mac. Opening Safari is not enough.
+
+Why:
+
+- Safari's sync program sends the changes listed in the bookmarks file, including the ones added by this app, but only when Safari tells it to.
+- Safari tells it only after Safari itself saves bookmarks. Opening Safari, or Safari reloading the file after the app changed it, does not do it.
+- The app cannot tell the sync program to start: it accepts this request only from Apple's own programs with a special permission that other apps cannot get.
+
+Tested on 13 November 2026: after a small edit in Safari, all waiting changes (moves, order, renames, deletions) were sent and accepted by iCloud; a moved bookmark showed up in its new folder on an iPhone. A way to start the sending from the app is not found yet.
+
 ## Features
 
 - **Library window** like in Firefox or Edge: the folder tree on the left, the contents of the selected folder on the right (name and address, number of bookmarks in each folder).
@@ -55,8 +67,8 @@ Safari syncs bookmarks through iCloud in the background, also while Safari is cl
 
 So that changes made in Safari Bookmarks reach your other devices, the app adds them to that list when saving, in the same form as Safari: new bookmarks and folders, moves and new order, new names, deletions. It does not change the sync data of the bookmarks themselves. The list is added only when iCloud sync is turned on for Safari.
 
-- Changes saved with version 1.0.0 were not added to the list, so iCloud did not get them.
-- How this works with a real iCloud account is still being tested. Try the app on a test folder first.
+- Changes saved with version 1.0.0 were not added to the list, so iCloud did not get them. **Bookmarks → Send Old Changes to iCloud…** works them out from the backups (moves, order, renames, deletions), shows what will be sent, including every deleted item, and adds them to the list. Save, then make a small change in Safari (see the unsolved problem at the top).
+- Changes go to iCloud only after Safari itself saves bookmarks; until then they wait in the file. See the unsolved problem at the top.
 
 ## Requirements
 

@@ -38,6 +38,7 @@ struct ContentView: View {
             case .newBookmark(let folder): NewBookmarkSheet(folder: folder)
             case .info(let id): InfoSheet(id: id)
             case .backups: BackupsSheet()
+            case .resend(let plan): ResendSheet(plan: plan)
             }
         }
         .confirmationDialog(deleteTitle, isPresented: deleteBinding, titleVisibility: .visible) {

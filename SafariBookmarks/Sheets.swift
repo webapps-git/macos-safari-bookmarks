@@ -149,6 +149,64 @@ struct NewBookmarkSheet: View {
     }
 }
 
+// MARK: - Stare zmiany do iCloud
+
+struct ResendSheet: View {
+    @Environment(BookmarkStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let plan: ResendChanges.Plan
+
+    private var since: String {
+        plan.since?.formatted(Date.FormatStyle(date: .long, time: .shortened).locale(AppLanguage.locale)) ?? "—"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("Wyślij do iCloud stare zmiany", "Send old changes to iCloud")).font(.headline)
+            Text(L("Zmiany zapisane wersją 1.0.0 nie trafiły do iCloud, więc iPhone i inne urządzenia ich nie mają. Aplikacja porównała kopię z \(since) (sprzed pierwszego zapisu) z obecnymi zakładkami.",
+                   "Changes saved with version 1.0.0 did not reach iCloud, so your iPhone and other devices do not have them. The app compared the backup from \(since) (before the first save) with your current bookmarks."))
+                .fixedSize(horizontal: false, vertical: true)
+            Form {
+                LabeledContent(L("Przeniesienia i kolejność", "Moves and order"), value: "\(plan.moved)")
+                LabeledContent(L("Zmiany nazw", "Renames"), value: "\(plan.renamed)")
+                LabeledContent(L("Usunięte", "Deleted"), value: plan.deleted.isEmpty ? "0" : "\(plan.deleted.count) (\(Plural.bookmarks(plan.deleted.reduce(0) { $0 + $1.leaves })))")
+            }
+            .formStyle(.grouped)
+            .frame(height: 150)
+            if !plan.deleted.isEmpty {
+                Text(L("Te elementy znikną też z iPhone’a i innych urządzeń:", "These items will also disappear from your iPhone and other devices:"))
+                    .font(.callout)
+                List(plan.deleted.indices, id: \.self) { i in
+                    let d = plan.deleted[i]
+                    HStack {
+                        Label(d.title.replacingOccurrences(of: "\n", with: " "), systemImage: d.isFolder ? "folder" : "bookmark")
+                            .lineLimit(1)
+                        Spacer()
+                        if d.isFolder { Text(Plural.bookmarks(d.leaves)).foregroundStyle(.secondary) }
+                    }
+                }
+                .frame(minHeight: 160)
+            }
+            Text(L("Zakładki na Macu się nie zmienią. Po „Przygotuj” zapisz (⌘S) przy zamkniętym Safari, potem otwórz Safari – wtedy zmiany pójdą do iCloud.",
+                   "Bookmarks on this Mac will not change. After “Prepare”, save (⌘S) with Safari closed, then open Safari – that is when the changes go to iCloud."))
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button(L("Anuluj", "Cancel"), role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(L("Przygotuj", "Prepare")) {
+                    store.resend(plan)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 520)
+    }
+}
+
 // MARK: - Informacje
 
 struct InfoSheet: View {

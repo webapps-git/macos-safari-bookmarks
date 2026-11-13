@@ -259,5 +259,8 @@ private struct EditCommands: View {
         Divider()
         Button(L("Odrzuć wszystkie zmiany", "Discard All Changes")) { store.discardChanges() }
             .disabled(!store.hasChanges || ui.sheet != nil)
+        Divider()
+        Button(L("Wyślij do iCloud stare zmiany…", "Send Old Changes to iCloud…")) { ui.openResend(store) }
+            .disabled(store.hasChanges || ui.sheet != nil || store.tree == nil)
     }
 }

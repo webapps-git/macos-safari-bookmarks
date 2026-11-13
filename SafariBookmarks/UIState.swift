@@ -11,6 +11,8 @@ final class UIState {
         case newBookmark(String)
         case info(String)
         case backups
+        /// Stare zmiany do dosłania do iCloud.
+        case resend(ResendChanges.Plan)
 
         var id: String {
             switch self {
@@ -19,6 +21,7 @@ final class UIState {
             case .newBookmark: "newBookmark"
             case .info: "info"
             case .backups: "backups"
+            case .resend: "resend"
             }
         }
     }
@@ -101,6 +104,20 @@ final class UIState {
     func newBookmark(_ store: BookmarkStore, in target: String? = nil) {
         guard sheet == nil, let folder = store.folderForNewBookmark(preferred: target ?? (isSearching ? nil : folderID)) else { return }
         sheet = .newBookmark(folder)
+    }
+
+    /// „Wyślij do iCloud stare zmiany…”: najpierw podsumowanie, nic jeszcze się nie zmienia.
+    func openResend(_ store: BookmarkStore) {
+        guard sheet == nil, !store.hasChanges else { return }
+        switch store.resendPlan() {
+        case .success(let plan) where plan.isEmpty:
+            message = Message(title: L("Nie ma czego wysyłać", "Nothing to send"),
+                              text: L("Wszystkie zmiany zapisane w aplikacji są już zgłoszone do iCloud.", "All changes saved in the app have already been passed to iCloud."))
+        case .success(let plan):
+            sheet = .resend(plan)
+        case .failure(let error):
+            message = Message(title: L("Nie można", "Not possible"), text: error.localizedDescription)
+        }
     }
 
     /// Po dodaniu: pokaż folder i zaznacz nową zakładkę.
