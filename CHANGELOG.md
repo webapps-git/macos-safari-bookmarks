@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 – 2026-11-13
 
 - New Bookmark (⌘D): name and address, added at the end of the open folder; an address copied to the clipboard is filled in. Also in the toolbar and the right-click menu. Not in the Reading List.
 - New Folder (⇧⌘N), also in the toolbar and the right-click menu.
