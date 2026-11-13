@@ -130,6 +130,7 @@ private struct MainToolbar: CustomizableToolbarContent {
         let editable = store.canEdit(ids)
         let folder = ui.isSearching ? nil : ui.folderID
         let folderName = folder.flatMap { store.tree?.byID[$0]?.title } ?? ""
+        let isReadingList = folder.flatMap { store.tree?.byID[$0]?.isReadingListRoot } ?? false
 
         ToolbarItem(id: "undo", placement: .navigation) {
             Button(L("Cofnij", "Undo"), systemImage: "arrow.uturn.backward") { store.undo() }
@@ -160,13 +161,20 @@ private struct MainToolbar: CustomizableToolbarContent {
         }
         ToolbarItem(id: "sort") {
             Menu {
-                Section(L("Sortuj folder „\(folderName)”", "Sort folder “\(folderName)”")) {
-                    ForEach(BookmarkStore.SortMode.allCases) { mode in
-                        Button(mode.title) { if let folder { store.sort(folder, mode: mode, recursive: sortRecursive) } }
+                if isReadingList {
+                    // Lista Czytelnicza nie ma folderów – tylko jedno sortowanie.
+                    Button(L("Sortuj alfabetycznie", "Sort Alphabetically")) {
+                        if let folder { store.sort(folder, mode: .mixed, recursive: false) }
                     }
+                } else {
+                    Section(L("Sortuj folder „\(folderName)”", "Sort folder “\(folderName)”")) {
+                        ForEach(BookmarkStore.SortMode.allCases) { mode in
+                            Button(mode.title) { if let folder { store.sort(folder, mode: mode, recursive: sortRecursive) } }
+                        }
+                    }
+                    Divider()
+                    Toggle(L("Sortuj też wszystkie podfoldery", "Also sort all subfolders"), isOn: $sortRecursive)
                 }
-                Divider()
-                Toggle(L("Sortuj też wszystkie podfoldery", "Also sort all subfolders"), isOn: $sortRecursive)
             } label: {
                 Label(L("Sortuj", "Sort"), systemImage: "arrow.up.arrow.down")
             }

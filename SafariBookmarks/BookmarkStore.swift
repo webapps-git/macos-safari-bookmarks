@@ -135,7 +135,8 @@ final class BookmarkStore {
         let rl = inReadingList(target)
         for id in ids {
             if id == target || tree.isDescendant(target, of: id) { return false }
-            if inReadingList(id) != rl { return false }
+            // Lista Czytelnicza nie ma folderów: do niej i z niej przechodzą tylko pojedyncze zakładki.
+            if inReadingList(id) != rl, tree.byID[id]?.kind != .leaf { return false }
         }
         return true
     }
@@ -273,7 +274,8 @@ final class BookmarkStore {
 
     func canSort(_ folderID: String?) -> Bool {
         guard let folderID, let tree, let node = tree.byID[folderID], node.isFolder, node.uuid != nil,
-              folderID != tree.root.id, !inReadingList(folderID) else { return false }
+              folderID != tree.root.id else { return false }
+        // Lista Czytelnicza też: Safari pokazuje ją w kolejności z pliku (sprawdzone 2026-11-13).
         return (node.children?.count ?? 0) > 1 || node.folderCount > 0
     }
 

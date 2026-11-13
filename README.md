@@ -9,9 +9,11 @@ Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folder
 - **Library window** like in Firefox or Edge: the folder tree on the left, the contents of the selected folder on the right (name and address, number of bookmarks in each folder).
 - **Drag and drop**: drop bookmarks and folders on a folder in the tree or in the list, change the order within a folder, move several items at once.
 - **Rename** (Return), **Move to…** a folder picked from a list, **Delete** (Delete key, with confirmation).
-- **Sort** the open folder alphabetically: folders first, bookmarks first or all together, optionally with all subfolders. Polish and other accented letters are sorted correctly.
+- **Sort** the open folder alphabetically: folders first, bookmarks first or all together, optionally with all subfolders. The Reading List can be sorted alphabetically too. Polish and other accented letters are sorted correctly.
+- **Reading List**: single bookmarks can be moved between the Reading List and your folders. Folders cannot be moved into the Reading List, because Safari has no folders there.
 - **Search** in names and addresses across all folders, with the folder of each result.
 - **Undo and redo** (⌘Z, ⇧⌘Z) for every change until it is saved.
+- **Unsaved changes** are not lost by accident: quitting the app or closing its window asks whether to save them. Closing the main window quits the app.
 - **Backups**: a copy of the bookmarks file is made before every save; any copy can be restored from the app.
 - **Info** for a bookmark or folder (right click): address, folder, date added, whether it syncs with iCloud.
 
@@ -23,11 +25,24 @@ Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folder
   - every bookmark and folder is still there, except the ones you deleted;
   - the number of bookmarks matches;
   - nothing changed except names and order: addresses, dates and iCloud sync data are untouched;
-  - Safari's own folders (Favorites, Bookmarks Menu, Reading List) are untouched.
+  - Safari's own folders (Favorites, Bookmarks Menu, Reading List) stay in place.
 
   If anything does not match, nothing is written.
 - If the file changed since it was loaded (in Safari or through iCloud), nothing is written.
 - The current file is copied to a backup, the new file replaces it in one step, and the app reads it back to compare.
+
+## Keyboard
+
+| Key | Action |
+| --- | --- |
+| Return | Rename |
+| ⌫ | Delete (with confirmation) |
+| ⇧⌘M | Move to… |
+| ⌥⌘↑ / ⌥⌘↓ | Move up / down within the folder |
+| ⌘Z / ⇧⌘Z | Undo / redo |
+| ⌘S | Save to Safari |
+| ⌘R | Reload from Safari |
+| ⌘W / ⌘Q | Close the window / quit (asks about unsaved changes) |
 
 ## iCloud
 
@@ -69,6 +84,10 @@ open "/Applications/Safari Bookmarks.app" --args -BookmarksFile ~/Desktop/Bookma
 - Backups are stored in `~/Library/Application Support/Safari Bookmarks/Backups/`, a log of saves in `log.txt` next to it.
 - The app is in English and Polish. It follows the macOS language: Polish when macOS picks Polish for the app, English otherwise.
 - Not affiliated with or endorsed by Apple. Safari is a trademark of Apple Inc.
+
+## Changes
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

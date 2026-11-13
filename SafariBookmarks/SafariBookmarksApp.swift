@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct SafariBookmarksApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var store = BookmarkStore()
     @State private var ui = UIState()
 
@@ -11,7 +12,11 @@ struct SafariBookmarksApp: App {
                 .environment(store)
                 .environment(ui)
                 .frame(minWidth: 960, minHeight: 540)
-                .task { store.reload() }
+                .background(MainWindowCloser())
+                .task {
+                    AppServices.store = store
+                    store.reload()
+                }
         }
         .commands {
             CommandGroup(replacing: .appInfo) { AboutMenuButton() }
@@ -31,6 +36,16 @@ struct SafariBookmarksApp: App {
                     .disabled(!store.hasChanges || ui.sheet != nil)
                 Button(L("Kopie zapasowe…", "Backups…")) { ui.sheet = .backups }
                     .disabled(ui.sheet != nil)
+                Divider()
+                Button(L("Zamknij okno", "Close Window")) {
+                    // Główne okno = koniec aplikacji (z pytaniem o niezapisane zmiany).
+                    if let key = NSApp.keyWindow, key !== AppServices.mainWindow {
+                        key.performClose(nil)
+                    } else {
+                        NSApp.terminate(nil)
+                    }
+                }
+                .keyboardShortcut("w")
             }
             CommandGroup(after: .newItem) {
                 Button(L("Wczytaj ponownie", "Reload")) {
@@ -53,6 +68,101 @@ struct SafariBookmarksApp: App {
         .defaultPosition(.center)
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
+    }
+}
+
+// MARK: - Zamykanie
+
+/// Dostęp do stanu z kodu poza widokami (delegat aplikacji).
+enum AppServices {
+    static weak var store: BookmarkStore?
+    static weak var mainWindow: NSWindow?
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Wyjście z niezapisanymi zmianami: Zapisz / Nie zapisuj / Anuluj.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let store = AppServices.store, store.hasChanges else { return .terminateNow }
+        if store.isWriting { return .terminateCancel }
+
+        let alert = NSAlert()
+        alert.messageText = L("Zapisać zmiany przed zamknięciem?", "Save changes before quitting?")
+        var text = L("Masz niezapisane zmiany: \(store.history.count). Jeśli ich nie zapiszesz, przepadną.",
+                     "You have unsaved changes: \(store.history.count). If you do not save them, they will be lost.")
+        if store.safariBlocksSaving {
+            text += "\n\n" + L("Safari jest otwarte – żeby zapisać, najpierw zamknij Safari.",
+                                "Safari is open – to save, quit Safari first.")
+        }
+        alert.informativeText = text
+        alert.addButton(withTitle: L("Zapisz", "Save"))
+        let dontSave = alert.addButton(withTitle: L("Nie zapisuj", "Don't Save"))
+        dontSave.hasDestructiveAction = true
+        dontSave.keyEquivalent = "d"
+        dontSave.keyEquivalentModifierMask = .command
+        let cancel = alert.addButton(withTitle: L("Anuluj", "Cancel"))
+        cancel.keyEquivalent = "\u{1b}"
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            return save(store)
+        case .alertSecondButtonReturn:
+            return .terminateNow
+        default:
+            return .terminateCancel
+        }
+    }
+
+    private func save(_ store: BookmarkStore) -> NSApplication.TerminateReply {
+        if store.safariBlocksSaving {
+            Self.inform(L("Najpierw zamknij Safari", "Quit Safari first"),
+                        L("Zmiany można zapisać dopiero po zamknięciu Safari. Aplikacja zostaje otwarta.",
+                          "Changes can only be saved after Safari is closed. The app stays open."))
+            return .terminateCancel
+        }
+        let problems = store.verify()
+        if !problems.isEmpty {
+            Self.inform(L("Nie można zapisać", "Cannot save"), problems.joined(separator: "\n"))
+            return .terminateCancel
+        }
+        Task {
+            switch await store.save() {
+            case .ok:
+                NSApp.reply(toApplicationShouldTerminate: true)
+            case .failed(let text):
+                Self.inform(L("Nie zapisano", "Not saved"), text)
+                NSApp.reply(toApplicationShouldTerminate: false)
+            }
+        }
+        return .terminateLater
+    }
+
+    private static func inform(_ title: String, _ text: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = text
+        alert.runModal()
+    }
+}
+
+/// Czerwony przycisk głównego okna kończy aplikację (przez pytanie o niezapisane zmiany),
+/// zamiast zostawiać ją uruchomioną bez okna.
+private struct MainWindowCloser: NSViewRepresentable {
+    final class Target: NSObject {
+        @objc func quit() { NSApp.terminate(nil) }
+    }
+
+    private static let target = Target()
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        Task { @MainActor [weak view] in
+            guard let window = view?.window, AppServices.mainWindow !== window else { return }
+            AppServices.mainWindow = window
+            let close = window.standardWindowButton(.closeButton)
+            close?.target = Self.target
+            close?.action = #selector(Target.quit)
+        }
     }
 }
 
