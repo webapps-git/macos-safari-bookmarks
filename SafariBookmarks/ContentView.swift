@@ -35,6 +35,7 @@ struct ContentView: View {
             switch sheet {
             case .move(let ids): MoveSheet(ids: ids)
             case .rename(let id): RenameSheet(id: id)
+            case .newBookmark(let folder): NewBookmarkSheet(folder: folder)
             case .info(let id): InfoSheet(id: id)
             case .backups: BackupsSheet()
             }
@@ -149,8 +150,21 @@ private struct MainToolbar: CustomizableToolbarContent {
             .disabled(!editable || ids.count != 1)
             .help(L("Zmień nazwę zaznaczonej zakładki lub folderu (Enter)", "Rename the selected bookmark or folder (Return)"))
         }
+        // Grupa – blok paska narzędzi mieści najwyżej 10 elementów.
+        Group {
+            ToolbarItem(id: "newBookmark") {
+                Button(L("Nowa zakładka", "New Bookmark"), systemImage: "link.badge.plus") { ui.newBookmark(store) }
+                    .disabled(store.folderForNewBookmark(preferred: folder) == nil)
+                    .help(L("Nowa zakładka w otwartym folderze (⌘D)", "New bookmark in the open folder (⌘D)"))
+            }
+            ToolbarItem(id: "newFolder") {
+                Button(L("Nowy folder", "New Folder"), systemImage: "folder.badge.plus") { ui.newFolder(store) }
+                    .disabled(store.folderForNewFolder(preferred: folder) == nil)
+                    .help(L("Nowy folder w otwartym folderze (⇧⌘N)", "New folder in the open folder (⇧⌘N)"))
+            }
+        }
         ToolbarItem(id: "move") {
-            Button(L("Przenieś", "Move"), systemImage: "folder.badge.plus") { ui.sheet = .move(ids) }
+            Button(L("Przenieś", "Move"), systemImage: "arrow.right.doc.on.clipboard") { ui.sheet = .move(ids) }
                 .disabled(!editable)
                 .help(L("Przenieś zaznaczone do innego folderu (⇧⌘M). Możesz też przeciągnąć myszą.", "Move the selection to another folder (⇧⌘M). You can also drag it."))
         }

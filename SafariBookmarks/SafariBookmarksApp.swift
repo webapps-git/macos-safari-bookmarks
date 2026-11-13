@@ -235,6 +235,13 @@ private struct EditCommands: View {
     var body: some View {
         let ids = ui.selection
         let editable = store.canEdit(ids) && ui.sheet == nil
+        Button(L("Nowa zakładka…", "New Bookmark…")) { ui.newBookmark(store) }
+            .keyboardShortcut("d")
+            .disabled(ui.sheet != nil || store.folderForNewBookmark(preferred: ui.isSearching ? nil : ui.folderID) == nil)
+        Button(L("Nowy folder", "New Folder")) { ui.newFolder(store) }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+            .disabled(ui.sheet != nil || store.folderForNewFolder(preferred: ui.isSearching ? nil : ui.folderID) == nil)
+        Divider()
         Button(L("Zmień nazwę…  (Enter)", "Rename…  (Return)")) { if let id = ui.singleSelection { ui.sheet = .rename(id) } }
             .disabled(!editable || ids.count != 1)
         Button(L("Przenieś do…", "Move to…")) { ui.sheet = .move(ids) }

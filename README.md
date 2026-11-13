@@ -8,6 +8,8 @@ Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folder
 
 - **Library window** like in Firefox or Edge: the folder tree on the left, the contents of the selected folder on the right (name and address, number of bookmarks in each folder).
 - **Drag and drop**: drop bookmarks and folders on a folder in the tree or in the list, change the order within a folder, move several items at once.
+- **New Bookmark** (⌘D): name and address, added at the end of the open folder. An address copied to the clipboard is filled in; `example.com` becomes `https://example.com/`; an empty name becomes the site name. Not available in the Reading List – add pages to it in Safari.
+- **New Folder** (⇧⌘N) in the open folder. Both are also in the toolbar and in the right-click menu.
 - **Rename** (Return), **Move to…** a folder picked from a list, **Delete** (Delete key, with confirmation).
 - **Sort** the open folder alphabetically: folders first, bookmarks first or all together, optionally with all subfolders. The Reading List can be sorted alphabetically too. Polish and other accented letters are sorted correctly.
 - **Reading List**: single bookmarks can be moved between the Reading List and your folders. Folders cannot be moved into the Reading List, because Safari has no folders there.
@@ -22,9 +24,10 @@ Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folder
 - Changes stay in the app until you click **Save**.
 - Safari must be closed. The app never quits Safari by itself; while Safari is open, a bar at the top says so and saving is blocked.
 - Before anything is written, the app checks the new file against the one it loaded:
-  - every bookmark and folder is still there, except the ones you deleted;
+  - every bookmark and folder is still there, except the ones you deleted, plus the ones you added;
   - the number of bookmarks matches;
   - nothing changed except names and order: addresses, dates and iCloud sync data are untouched;
+  - the list of changes for iCloud (see below) only describes what you did;
   - Safari's own folders (Favorites, Bookmarks Menu, Reading List) stay in place.
 
   If anything does not match, nothing is written.
@@ -35,6 +38,8 @@ Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folder
 
 | Key | Action |
 | --- | --- |
+| ⌘D | New bookmark |
+| ⇧⌘N | New folder |
 | Return | Rename |
 | ⌫ | Delete (with confirmation) |
 | ⇧⌘M | Move to… |
@@ -46,11 +51,16 @@ Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folder
 
 ## iCloud
 
-Safari syncs bookmarks through iCloud in the background, also while Safari is closed. Safari Bookmarks does not touch the sync data, but how iCloud handles changes made outside Safari is still being tested. Try the app on a test folder first.
+Safari syncs bookmarks through iCloud in the background, also while Safari is closed. The sync does not compare the bookmarks file with iCloud: it only sends the changes listed in a list of changes inside the file, which Safari fills in itself.
+
+So that changes made in Safari Bookmarks reach your other devices, the app adds them to that list when saving, in the same form as Safari: new bookmarks and folders, moves and new order, new names, deletions. It does not change the sync data of the bookmarks themselves. The list is added only when iCloud sync is turned on for Safari.
+
+- Changes saved with version 1.0.0 were not added to the list, so iCloud did not get them.
+- How this works with a real iCloud account is still being tested. Try the app on a test folder first.
 
 ## Requirements
 
-- macOS 15.0 or later, Apple Silicon or Intel (universal build).
+- macOS 15.0 or later, Apple Silicon or Intel (`build.sh` builds for the Mac it runs on).
 - Xcode 26 or later to build (the project uses Swift 6.2).
 - **Full Disk Access** for the app (System Settings → Privacy & Security → Full Disk Access): Safari's folder in `~/Library/Safari` is protected by macOS.
 
@@ -58,7 +68,7 @@ Safari syncs bookmarks through iCloud in the background, also while Safari is cl
 
 **Xcode:** create `Local.xcconfig` next to `Signing.xcconfig` with your team (`DEVELOPMENT_TEAM = ABCDE12345`; the file is not committed), open `SafariBookmarks.xcodeproj` and run. Without a team, Xcode signs the app to run locally.
 
-**Command line** (builds Release and installs into `/Applications`):
+**Command line** (builds Release for the processor of this Mac only and installs into `/Applications`):
 
 ```bash
 ADHOC=1 ./build.sh

@@ -99,6 +99,56 @@ struct RenameSheet: View {
     }
 }
 
+// MARK: - Nowa zakładka
+
+struct NewBookmarkSheet: View {
+    @Environment(BookmarkStore.self) private var store
+    @Environment(UIState.self) private var ui
+    @Environment(\.dismiss) private var dismiss
+    let folder: String
+    @State private var name = ""
+    @State private var address = ""
+
+    private var validURL: String? { BookmarkStore.normalizedURL(address) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("Nowa zakładka w „\(store.tree?.byID[folder]?.title ?? "")”", "New bookmark in “\(store.tree?.byID[folder]?.title ?? "")”"))
+                .font(.headline)
+            TextField(L("Nazwa (puste = nazwa strony z adresu)", "Name (empty = site name from the address)"), text: $name)
+                .textFieldStyle(.roundedBorder)
+            TextField(L("Adres, np. https://…", "Address, e.g. https://…"), text: $address)
+                .textFieldStyle(.roundedBorder)
+            if !address.trimmingCharacters(in: .whitespaces).isEmpty, validURL == nil {
+                Text(L("To nie wygląda na adres strony.", "This does not look like a web address."))
+                    .font(.callout).foregroundStyle(.orange)
+            }
+            HStack {
+                Spacer()
+                Button(L("Anuluj", "Cancel"), role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(L("Dodaj", "Add")) {
+                    if let id = store.addBookmark(in: folder, title: name, url: address) {
+                        ui.bookmarkAdded(id, in: folder)
+                    }
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(validURL == nil)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+        .onAppear {
+            // Adres skopiowany ze strony – od razu w polu.
+            if let s = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               s.lowercased().hasPrefix("http"), BookmarkStore.normalizedURL(s) != nil {
+                address = s
+            }
+        }
+    }
+}
+
 // MARK: - Informacje
 
 struct InfoSheet: View {

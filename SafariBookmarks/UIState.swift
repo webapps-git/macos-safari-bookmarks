@@ -7,6 +7,8 @@ final class UIState {
     enum Sheet: Identifiable {
         case move(Set<String>)
         case rename(String)
+        /// Nowa zakładka w podanym folderze.
+        case newBookmark(String)
         case info(String)
         case backups
 
@@ -14,6 +16,7 @@ final class UIState {
             switch self {
             case .move: "move"
             case .rename: "rename"
+            case .newBookmark: "newBookmark"
             case .info: "info"
             case .backups: "backups"
             }
@@ -82,6 +85,29 @@ final class UIState {
             try? await Task.sleep(for: .seconds(2))
             if toast == text { toast = nil }
         }
+    }
+
+    /// Nowy folder w `target` (albo w otwartym folderze / Ulubionych), od razu z polem na nazwę.
+    func newFolder(_ store: BookmarkStore, in target: String? = nil) {
+        guard sheet == nil, let folder = store.folderForNewFolder(preferred: target ?? (isSearching ? nil : folderID)),
+              let id = store.addFolder(in: folder, title: L("Nowy folder", "New Folder")) else { return }
+        query = ""
+        folderID = folder
+        selection = [id]
+        sheet = .rename(id)
+    }
+
+    /// Okno „Nowa zakładka” dla `target` (albo otwartego folderu / Ulubionych).
+    func newBookmark(_ store: BookmarkStore, in target: String? = nil) {
+        guard sheet == nil, let folder = store.folderForNewBookmark(preferred: target ?? (isSearching ? nil : folderID)) else { return }
+        sheet = .newBookmark(folder)
+    }
+
+    /// Po dodaniu: pokaż folder i zaznacz nową zakładkę.
+    func bookmarkAdded(_ id: String, in folder: String) {
+        query = ""
+        folderID = folder
+        selection = [id]
     }
 
     var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- New Bookmark (⌘D): name and address, added at the end of the open folder; an address copied to the clipboard is filled in. Also in the toolbar and the right-click menu. Not in the Reading List.
+- New Folder (⇧⌘N), also in the toolbar and the right-click menu.
+- iCloud: saving now adds the changes to Safari's list of changes for iCloud (new, moved, renamed and deleted items), so they can reach other devices. Changes saved with 1.0.0 were not sent. Not yet tested with a real iCloud account.
+- The check before saving also covers new items and the list of changes for iCloud.
+- `build.sh` builds only for the processor of the Mac it runs on.
+
 ## 1.0.0 – 2026-11-13
 
 First release.

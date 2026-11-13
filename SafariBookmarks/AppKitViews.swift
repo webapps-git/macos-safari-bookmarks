@@ -57,6 +57,17 @@ enum NodeMenu {
         }
         if menu.items.count > 0 { menu.addItem(.separator()) }
 
+        // Nowa zakładka / nowy folder: w klikniętym folderze, a przy zakładce – obok niej.
+        if let node {
+            let target = node.isFolder ? node.id : tree.parent[node.id]
+            if let target, store.canAddFolder(in: target) {
+                let name = tree.byID[target]?.title ?? ""
+                menu.addItem(ClosureMenuItem(L("Nowa zakładka w „\(name)”…", "New Bookmark in “\(name)”…")) { ui.newBookmark(store, in: target) })
+                menu.addItem(ClosureMenuItem(L("Nowy folder w „\(name)”", "New Folder in “\(name)”")) { ui.newFolder(store, in: target) })
+                menu.addItem(.separator())
+            }
+        }
+
         let reason = ids.lazy.compactMap { store.lockReason($0) }.first
         let editable = reason == nil
         menu.addItem(ClosureMenuItem(L("Zmień nazwę…", "Rename…"), enabled: editable && single != nil) {

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds a Release version of Safari Bookmarks (Apple Silicon + Intel) and installs it into /Applications.
+# Builds a Release version of Safari Bookmarks for this Mac's processor only and installs it into /Applications.
 #
 #   ./build.sh           sign with the team set in Local.xcconfig (see Signing.xcconfig);
 #                        without that file the app is signed ad hoc
@@ -20,6 +20,7 @@ xcodebuild \
     -configuration Release \
     -destination 'generic/platform=macOS' \
     -derivedDataPath build \
+    ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES \
     "${signing[@]}" \
     build
 

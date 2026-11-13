@@ -20,6 +20,8 @@ final class BookmarkStore {
     // Stan edycji
     private var root: NSMutableDictionary?
     private var baseline: Verifier.Baseline?
+    /// Plik w chwili wczytania – do ustalenia listy zmian dla iCloud.
+    private var original: NSDictionary?
     private var removed = Verifier.Removed()
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
@@ -54,6 +56,7 @@ final class BookmarkStore {
             let data = try BookmarksFile.read(fileURL)
             let dict = try BookmarksFile.parseMutable(data)
             root = dict
+            original = try BookmarksFile.parseMutable(data)
             baseline = Verifier.baseline(data: data, root: dict)
             removed = .init()
             undoStack = []
@@ -153,6 +156,104 @@ final class BookmarkStore {
         }
         visit(tree.root, depth: 0)
         return out
+    }
+
+    // MARK: - Nowy folder
+
+    /// Czy w folderze `target` można założyć nowy folder (nie w Liście Czytelniczej – ona nie ma folderów).
+    func canAddFolder(in target: String) -> Bool {
+        guard let tree, let folder = tree.byID[target], folder.isFolder, folder.uuid != nil,
+              target != tree.root.id, folder.kind == .folder else { return false }
+        return !inReadingList(target)
+    }
+
+    /// Folder, w którym powstanie nowy folder: otwarty folder albo Ulubione.
+    func folderForNewFolder(preferred: String?) -> String? {
+        if let preferred, canAddFolder(in: preferred) { return preferred }
+        guard let tree else { return nil }
+        return tree.root.children?.first { $0.rawTitle == "BookmarksBar" }?.id
+    }
+
+    /// Zakłada pusty folder (za ostatnim folderem w `target`). Zwraca jego id.
+    @discardableResult
+    func addFolder(in target: String, title: String) -> String? {
+        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canAddFolder(in: target), !name.isEmpty, let tree, let folder = tree.byID[target] else {
+            notice = L("Tu nie można założyć folderu.", "A folder cannot be created here.")
+            return nil
+        }
+        let uuid = UUID().uuidString
+        // Tak jak w Safari: typ, UUID, nazwa, pusta zawartość (+ data dodania). Dane iCloud dopisze iCloud.
+        let node: NSMutableDictionary = [
+            "WebBookmarkType": "WebBookmarkTypeList",
+            "WebBookmarkUUID": uuid,
+            "Title": name,
+            "Children": NSMutableArray(),
+            "dateAdded": Date(),
+        ]
+        let insertAt = (folder.children ?? []).lastIndex { $0.isFolder }.map { $0 + 1 } ?? 0
+        perform(L("Dodano folder „\(name)” w „\(folder.title)”", "Added folder “\(name)” to “\(folder.title)”")) {
+            guard let parent = locate(target)?.node else { throw OperationError(L("Nie znaleziono folderu.", "The folder was not found.")) }
+            let children = parent["Children"] as? NSMutableArray ?? NSMutableArray()
+            parent["Children"] = children
+            children.insert(node, at: min(insertAt, children.count))
+            removed.added[uuid, default: 0] += 1
+        }
+        return self.tree?.byID[uuid] != nil ? uuid : nil
+    }
+
+    // MARK: - Nowa zakładka
+
+    /// Czy w folderze `target` można dodać zakładkę (nie w Liście Czytelniczej – do niej dodaje się z Safari).
+    func canAddBookmark(in target: String) -> Bool { canAddFolder(in: target) }
+
+    /// Folder, w którym powstanie nowa zakładka: otwarty folder albo Ulubione.
+    func folderForNewBookmark(preferred: String?) -> String? { folderForNewFolder(preferred: preferred) }
+
+    /// Adres wpisany przez użytkownika w postaci do zapisu (bez „https://” dopisuje je), albo nil, gdy to nie adres.
+    static func normalizedURL(_ text: String) -> String? {
+        var s = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty, !s.contains(where: \.isWhitespace) else { return nil }
+        if s.range(of: "^[A-Za-z][A-Za-z0-9+.-]*:", options: .regularExpression) == nil
+            || s.range(of: "^[^/:]+:[0-9]+(/|$)", options: .regularExpression) != nil {
+            s = "https://" + s
+        }
+        guard let url = URL(string: s), let scheme = url.scheme?.lowercased() else { return nil }
+        if scheme == "http" || scheme == "https" {
+            guard let host = url.host, !host.isEmpty else { return nil }
+            // Sam „example.com/” jak w Safari.
+            if url.path.isEmpty, url.query == nil, url.fragment == nil, !s.hasSuffix("/") { s += "/" }
+        }
+        return s
+    }
+
+    /// Dodaje zakładkę na końcu folderu `target`. Zwraca jej id.
+    @discardableResult
+    func addBookmark(in target: String, title: String, url: String) -> String? {
+        guard canAddBookmark(in: target), let address = Self.normalizedURL(url), let tree, let folder = tree.byID[target] else {
+            notice = L("Tu nie można dodać zakładki.", "A bookmark cannot be added here.")
+            return nil
+        }
+        var name = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty { name = URL(string: address)?.host ?? address }
+        let uuid = UUID().uuidString
+        // Tak jak w Safari: typ, UUID, adres, nazwa (+ data dodania). Dane iCloud dopisze iCloud.
+        let node: NSMutableDictionary = [
+            "WebBookmarkType": "WebBookmarkTypeLeaf",
+            "WebBookmarkUUID": uuid,
+            "URLString": address,
+            "URIDictionary": NSMutableDictionary(dictionary: ["title": name]),
+            "dateAdded": Date(),
+        ]
+        perform(L("Dodano zakładkę „\(name)” w „\(folder.title)”", "Added bookmark “\(name)” to “\(folder.title)”")) {
+            guard let parent = locate(target)?.node else { throw OperationError(L("Nie znaleziono folderu.", "The folder was not found.")) }
+            let children = parent["Children"] as? NSMutableArray ?? NSMutableArray()
+            parent["Children"] = children
+            children.add(node)
+            removed.added[uuid, default: 0] += 1
+            removed.addedLeaves += 1
+        }
+        return self.tree?.byID[uuid] != nil ? uuid : nil
     }
 
     // MARK: - Operacje
@@ -406,12 +507,16 @@ final class BookmarkStore {
 
     /// Zapis bieżących zmian. Safari musi być zamknięte – aplikacja go nie zamyka.
     func save() async -> WriteResult {
-        guard let root, let baseline, hasChanges, !isWriting else { return .failed(L("Nie ma czego zapisać.", "There is nothing to save.")) }
+        guard let root, let baseline, let original, hasChanges, !isWriting else { return .failed(L("Nie ma czego zapisać.", "There is nothing to save.")) }
         isWriting = true
         defer { isWriting = false }
         let data: Data
+        let syncCount: Int
         do {
-            data = try BookmarksFile.serialize(root)
+            // Kopia stanu z dopisaną listą zmian dla iCloud (sam stan w pamięci zostaje bez niej).
+            let candidate = try BookmarksFile.parseMutable(BookmarksFile.serialize(root))
+            syncCount = SyncChanges.record(original: original, into: candidate)
+            data = try BookmarksFile.serialize(candidate)
         } catch {
             return .failed(L("Nie udało się przygotować zakładek do zapisu.", "Could not prepare the bookmarks for saving."))
         }
@@ -421,9 +526,10 @@ final class BookmarkStore {
             return .failed(problems.joined(separator: "\n"))
         }
         log("SAVE: " + history.joined(separator: "; "))
+        log("  iCloud changes: \(syncCount)")
         let removedSnapshot = removed
         return await write(data, expectedHash: baseline.fileHash) { written in
-            Verifier.check(candidate: written, against: baseline, removed: removedSnapshot)
+            Verifier.check(candidate: written, against: baseline, removed: removedSnapshot, syncMayChange: true)
         }
     }
 
