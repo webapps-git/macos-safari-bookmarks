@@ -86,14 +86,19 @@ nonisolated enum LinkChecker {
     }
 
     static func classify(original: URL, probe p: Probe) -> Verdict {
+        let local = isInternalHost(original.host)
+        let localNote = L("Adres w sieci lokalnej albo firmowej (np. przez VPN) – sprawdź go po połączeniu z tą siecią.",
+                          "An address in a local or company network (e.g. over VPN) – check it when connected to that network.")
         if let e = p.error {
             switch e.code {
             case .cannotFindHost, .dnsLookupFailed:
-                return .dead(L("Domena nie istnieje.", "The domain does not exist."))
+                return local ? .unsure(localNote) : .dead(L("Domena nie istnieje.", "The domain does not exist."))
             case .cannotConnectToHost:
-                return .dead(L("Serwer nie przyjmuje połączeń.", "The server refuses connections."))
-            case .timedOut:
-                return .unsure(L("Strona nie odpowiedziała na czas.", "The page did not answer in time."))
+                // Serwer odmawia – to nie dowód, że strony nie ma (sieć firmowa, VPN, chwilowa awaria).
+                return .unsure(local ? localNote : L("Serwer nie przyjmuje połączeń – może działa tylko w innej sieci albo ma chwilową awarię.",
+                                                     "The server refuses connections – it may work only in another network or be down for a while."))
+            case .timedOut, .networkConnectionLost, .notConnectedToInternet:
+                return .unsure(local ? localNote : L("Strona nie odpowiedziała na czas.", "The page did not answer in time."))
             case .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot, .secureConnectionFailed:
                 return .unsure(L("Problem z certyfikatem strony.", "Problem with the site's certificate."))
             case .httpTooManyRedirects:
@@ -108,6 +113,10 @@ nonisolated enum LinkChecker {
             return .dead(L("Strony nie ma (\(status)).", "The page is gone (\(status))."))
         case 200..<400:
             if p.redirected, p.permanentOnly, let final = p.finalURL, final.absoluteString != original.absoluteString {
+                // Konkretna strona przekierowuje na główną – zwykle znaczy, że jej już nie ma (np. produkt).
+                if isRoot(final), !isRoot(original) {
+                    return .dead(L("Przekierowuje na stronę główną – tej strony już nie ma.", "Redirects to the home page – this page is gone."))
+                }
                 return .redirected(to: final.absoluteString)
             }
             return .ok
@@ -120,6 +129,26 @@ nonisolated enum LinkChecker {
         default:
             return .unsure(L("Nietypowa odpowiedź (\(status)).", "Unusual answer (\(status))."))
         }
+    }
+
+    /// Adres bez ścieżki i parametrów (strona główna).
+    static func isRoot(_ url: URL) -> Bool {
+        (url.path.isEmpty || url.path == "/") && (url.query ?? "").isEmpty
+    }
+
+    /// Nazwa serwera z sieci lokalnej albo firmowej: adres IP z puli prywatnej, nazwa bez kropki,
+    /// końcówka z cyframi albo typowa dla sieci wewnętrznych (.local, .lan, .home, .internal…).
+    static func isInternalHost(_ host: String?) -> Bool {
+        guard let h = host?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]")), !h.isEmpty else { return false }
+        let parts = h.split(separator: ".").map(String.init)
+        if parts.count == 4, parts.allSatisfy({ Int($0).map { (0...255).contains($0) } ?? false }) {
+            let a = Int(parts[0])!, b = Int(parts[1])!
+            return a == 10 || a == 127 || (a == 172 && (16...31).contains(b)) || (a == 192 && b == 168) || (a == 169 && b == 254) || (a == 100 && (64...127).contains(b))
+        }
+        if h.contains(":") { return h == "::1" || h.hasPrefix("fc") || h.hasPrefix("fd") || h.hasPrefix("fe80") }
+        guard parts.count > 1, let tld = parts.last else { return true }
+        if tld.contains(where: \.isNumber) { return true }
+        return ["local", "lan", "home", "internal", "intranet", "corp", "localhost", "localdomain", "test", "invalid", "example", "private", "priv", "vpn"].contains(tld)
     }
 
     /// Jedno zapytanie: śledzi przekierowania, kończy po nagłówkach.

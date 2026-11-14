@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1 – 2026-11-14
+
+- Check Links: addresses in a local or company network (private IP addresses, names without a dot, endings such as .local, .lan, .internal or with digits) are no longer marked dead when they cannot be reached – they are "unsure", with a note to check them when connected to that network or VPN. "The server refuses connections" is now "unsure" for every address.
+- Check Links: a page that permanently redirects to the site's home page is now "dead" (the page is gone) instead of suggesting the home page as its new address.
+
 ## 1.8.0 – 2026-11-14
 
 - Site icons next to bookmarks in the list. First from Safari's own icon cache (no network), otherwise downloaded once from the site – favicon.ico or the icon named in the page – 4 at a time in the background and kept in the app's cache; sites without an icon are tried again after a week. Bookmarks → Download Missing Site Icons switches downloading off.
