@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.0 – 2026-11-14
+
+- Site icons next to bookmarks in the list. First from Safari's own icon cache (no network), otherwise downloaded once from the site – favicon.ico or the icon named in the page – 4 at a time in the background and kept in the app's cache; sites without an icon are tried again after a week. Bookmarks → Download Missing Site Icons switches downloading off.
+
 ## 1.7.0 – 2026-11-14
 
 - Bookmarks → Import Bookmarks…: from Chrome, Edge (all profiles, with their names) and Firefox (all profiles, read from a copy of its database, so Firefox may stay open), or from an HTML bookmarks file. Only reads the other browser. Imported bookmarks go into a new folder in the open folder (or Favorites) as one undoable step; empty folders, separators and internal browser pages are skipped.

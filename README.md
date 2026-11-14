@@ -17,6 +17,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 - **Edit** (Return): name and address of a bookmark, name of a folder. **Move to…** a folder picked from a list, **Delete** (Delete key, with confirmation).
 - **Sort** the open folder alphabetically: folders first, bookmarks first or all together, optionally with all subfolders. The Reading List can be sorted alphabetically too. Polish and other accented letters are sorted correctly.
 - **Reading List**: single bookmarks can be moved between the Reading List and your folders. Folders cannot be moved into the Reading List, because Safari has no folders there.
+- **Site icons** next to bookmarks in the list: taken from Safari's own icon cache first, otherwise downloaded once from the site (its favicon or the icon named in the page) and kept by the app; sites without an icon are tried again after a week. Downloading can be switched off in the Bookmarks menu (Download Missing Site Icons).
 - **Search** in names and addresses across all folders, with the folder of each result.
 - **Find Duplicates** (Bookmarks menu): bookmarks with an identical address, and "almost identical" ones that differ only in http/https, "www." or a trailing slash. Each shows its folder and date added. For identical ones the app suggests keeping one (from Favorites, with https, or the oldest) and checks the rest for deletion; almost identical ones are left for you to decide. The Reading List is skipped.
 - **Check Links** (Bookmarks menu): the app visits every bookmark like a browser, without cookies or saved logins, several at a time, and only reads the first part of the answer. Results: **permanently moved** (suggests the new address), **works over https** (suggests https instead of http), **dead** (the page or the domain is gone – you check which to delete), **unsure** (login needed, blocked, server error, no answer in time – shown only). Address fixes are checked by default, deletions are not; nothing changes until you click Apply, and it can be undone until saving. **Skip** hides a bookmark from future checks. The Reading List is not checked. Each site sees an ordinary visit from your address; a firewall app may ask once whether Safari Bookmarks may connect.
@@ -109,7 +110,7 @@ open "/Applications/Safari Bookmarks.app" --args -BookmarksFile ~/Desktop/Bookma
 ## Notes
 
 - The app is **not sandboxed**: it needs to read and write Safari's bookmarks file. For the same reason it cannot be distributed through the Mac App Store.
-- Backups are stored in `~/Library/Application Support/Safari Bookmarks/Backups/`, a log of saves in `log.txt` next to it.
+- Backups are stored in `~/Library/Application Support/Safari Bookmarks/Backups/`, a log of saves in `log.txt` next to it. Downloaded site icons are kept in `~/Library/Caches/` under the app's name.
 - The app is in English and Polish. It follows the macOS language: Polish when macOS picks Polish for the app, English otherwise.
 - Not affiliated with or endorsed by Apple. Safari is a trademark of Apple Inc.
 

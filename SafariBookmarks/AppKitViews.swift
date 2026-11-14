@@ -436,6 +436,10 @@ struct ContentTable: NSViewRepresentable {
         table.onDelete = { [weak c] in c?.deleteSelected() }
         table.onReturn = { [weak c] in c?.renameSelected() }
         table.menuProvider = { [weak c] _ in c?.menu() }
+        // Nowe ikonki stron – odśwież widoczne nazwy.
+        c.faviconObserver = NotificationCenter.default.addObserver(forName: Favicons.didChange, object: nil, queue: .main) { [weak c] _ in
+            MainActor.assumeIsolated { c?.refreshIcons() }
+        }
 
         let scroll = NSScrollView()
         scroll.documentView = table
@@ -460,6 +464,18 @@ struct ContentTable: NSViewRepresentable {
         private var store: BookmarkStore { parent.store }
         private var ui: UIState { parent.ui }
         private var searching: Bool { parent.paths != nil }
+        nonisolated(unsafe) var faviconObserver: NSObjectProtocol?
+
+        deinit {
+            if let faviconObserver { NotificationCenter.default.removeObserver(faviconObserver) }
+        }
+
+        func refreshIcons() {
+            guard let table, let col = table.tableColumns.firstIndex(where: { $0.identifier.rawValue == "name" }) else { return }
+            let visible = table.rows(in: table.visibleRect)
+            guard visible.length > 0 else { return }
+            table.reloadData(forRowIndexes: IndexSet(integersIn: visible.location..<(visible.location + visible.length)), columnIndexes: [col])
+        }
 
         func sync() {
             guard let table else { return }
@@ -486,7 +502,8 @@ struct ContentTable: NSViewRepresentable {
             let node = rows[row]
             switch tableColumn?.identifier.rawValue {
             case "name":
-                return makeCell(tableView, id: "name", image: symbol(node.systemImage), text: node.title)
+                let icon = node.kind == .leaf ? Favicons.shared.icon(for: node.url) : nil
+                return makeCell(tableView, id: "name", image: icon ?? symbol(node.systemImage), text: node.title)
             case "url":
                 if node.isFolder {
                     return makeCell(tableView, id: "url", image: nil, text: Plural.bookmarks(node.leafCount), secondary: true)

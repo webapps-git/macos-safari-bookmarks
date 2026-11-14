@@ -264,6 +264,9 @@ private struct EditCommands: View {
             .disabled(ui.sheet != nil || store.tree == nil)
         Button(L("Sprawdź linki…", "Check Links…")) { ui.sheet = .linkCheck }
             .disabled(ui.sheet != nil || store.tree == nil)
+        Toggle(L("Pobieraj brakujące ikonki stron", "Download Missing Site Icons"), isOn: Binding(
+            get: { Favicons.fetchFromWeb },
+            set: { Favicons.fetchFromWeb = $0 }))
         Divider()
         Button(L("Importuj zakładki…", "Import Bookmarks…")) { ui.sheet = .importBookmarks }
             .disabled(ui.sheet != nil || store.tree == nil)
