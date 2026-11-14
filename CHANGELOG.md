@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 – 2026-11-14
+
+- Empty Reading List: instead of leaving the changes waiting, the app adds one item to the Reading List – the app's page on GitHub – which makes Safari send the changes to iCloud. The item stays and is used again with later saves.
+
 ## 1.3.0 – 2026-11-14
 
 - Saving now works only while Safari is open (before: only while Safari was closed). Safari loads the changed file right away. While Safari is closed, a bar says so and has an Open Safari button. The same applies to restoring a backup.
@@ -12,13 +16,12 @@
 - Bookmarks → Send Old Changes to iCloud…: changes saved with 1.0.0 never reached iCloud. The app works them out from its backups (moves, order, renames, deletions), shows a summary with the list of deleted items, and adds them to Safari's list of changes for iCloud. Bookmarks on the Mac do not change. Can be done once.
 - The check before saving accepts these entries only for items that exist (moves, renames) or no longer exist (deletions).
 - Tested with a real iCloud account: moves, order, renames and deletions saved in the app were accepted by iCloud; a moved bookmark showed up on an iPhone.
-- Known problem, not solved: changes reach iCloud only after a small edit to bookmarks in Safari itself; the app cannot start the sending (see README).
 
 ## 1.1.0 – 2026-11-13
 
 - New Bookmark (⌘D): name and address, added at the end of the open folder; an address copied to the clipboard is filled in. Also in the toolbar and the right-click menu. Not in the Reading List.
 - New Folder (⇧⌘N), also in the toolbar and the right-click menu.
-- iCloud: saving now adds the changes to Safari's list of changes for iCloud (new, moved, renamed and deleted items), so they can reach other devices. Changes saved with 1.0.0 were not sent. Not yet tested with a real iCloud account.
+- iCloud: saving now adds the changes to Safari's list of changes for iCloud (new, moved, renamed and deleted items), so they can reach other devices. Changes saved with 1.0.0 were not sent.
 - The check before saving also covers new items and the list of changes for iCloud.
 - `build.sh` builds only for the processor of the Mac it runs on.
 

@@ -69,8 +69,7 @@ So right after saving, the app asks Safari (AppleScript) to add the **top item o
 
 - The first time, macOS asks whether Safari Bookmarks may control Safari. Without this permission (System Settings → Privacy & Security → Automation) the changes wait until your next bookmark change in Safari.
 - Side effect: the top Reading List item gets today's date added and may lose its picture until Safari loads it again.
-- With an empty Reading List the app cannot ask Safari; the changes wait until your next bookmark change in Safari.
-- Tested on 14 November 2026: the change showed up on an iPhone a few seconds after saving.
+- With an empty Reading List the app adds one item to it: the app's page on GitHub ("Safari Bookmarks"). It stays there and is the item added again with later saves, so there is always just one.
 
 ## Requirements
 

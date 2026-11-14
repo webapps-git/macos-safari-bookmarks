@@ -8,12 +8,20 @@ import Foundation
 /// pozycji Listy Czytelniczej z tym samym adresem, tytułem i opisem: Safari zastępuje ją nową
 /// (lista się nie zmienia, zmienia się tylko data dodania tej pozycji), zapisuje zakładki
 /// i wysyła do iCloud wszystko, co czeka – także nasze zmiany. Sprawdzone 14.11.2026.
+/// Gdy lista jest pusta, dodajemy do niej stronę aplikacji (`appItem`).
 enum SafariNudge {
     struct Item {
         let url: String
         let title: String?
         let preview: String?
     }
+
+    /// Pozycja dodawana, gdy Lista Czytelnicza jest pusta: strona aplikacji. Zostaje na liście
+    /// i przy następnych zapisach to ona jest dodawana ponownie (zawsze jest jedna).
+    static let appItem = Item(url: "https://github.com/webapps-git/macos-safari-bookmarks",
+                              title: "Safari Bookmarks",
+                              preview: L("Menedżer zakładek Safari. Ta pozycja pozwala aplikacji wysyłać zmiany do iCloud – nie usuwaj jej.",
+                                         "Safari bookmark manager. This item lets the app send changes to iCloud – keep it."))
 
     /// Górna pozycja Listy Czytelniczej.
     static func topReadingListItem(in root: NSDictionary) -> Item? {

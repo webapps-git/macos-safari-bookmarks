@@ -511,10 +511,8 @@ final class BookmarkStore {
               let root = try? PropertyListSerialization.propertyList(from: data, format: nil) as? NSDictionary else {
             return L("Nie udało się odczytać zakładek Safari.", "Could not read Safari bookmarks.")
         }
-        guard let item = SafariNudge.topReadingListItem(in: root) else {
-            return L("Lista Czytelnicza jest pusta, więc aplikacja nie może poprosić Safari o wysłanie. Zmiany pójdą do iCloud przy następnej zmianie zakładek w Safari.",
-                     "The Reading List is empty, so the app cannot ask Safari to send. The changes will go to iCloud with your next bookmark change in Safari.")
-        }
+        // Pusta Lista Czytelnicza: dodajemy stronę aplikacji – zostaje tam jako pozycja do ponownego dodawania.
+        let item = SafariNudge.topReadingListItem(in: root) ?? SafariNudge.appItem
         let error = SafariNudge.run(item)
         log("  asked Safari to sync: " + (error ?? "OK"))
         return error
