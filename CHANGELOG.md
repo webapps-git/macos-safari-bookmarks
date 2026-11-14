@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 – 2026-11-14
+
+- Edit instead of Rename (Return, toolbar, right-click menu): name and address of a bookmark in one window, like New Bookmark; name of a folder. A changed address goes to iCloud like a change made in Safari.
+- iCloud status in the toolbar: green – everything sent, orange – changes waiting, red – a problem, grey – iCloud off. A click shows details and a Send Now button. The app checks Safari's bookmarks file every few seconds, so it also shows changes made in Safari that are still waiting.
+- The check before saving allows a new address only for bookmarks you edited.
+
 ## 1.3.1 – 2026-11-14
 
 - Empty Reading List: instead of leaving the changes waiting, the app adds one item to the Reading List – the app's page on GitHub – which makes Safari send the changes to iCloud. The item stays and is used again with later saves.

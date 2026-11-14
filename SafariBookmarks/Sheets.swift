@@ -64,37 +64,51 @@ struct MoveSheet: View {
     }
 }
 
-// MARK: - Zmiana nazwy
+// MARK: - Edycja (nazwa i adres)
 
+/// Edycja zakładki (nazwa i adres) albo folderu (nazwa). Ten sam wygląd co „Nowa zakładka”.
 struct RenameSheet: View {
     @Environment(BookmarkStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let id: String
-    @State private var text = ""
+    @State private var name = ""
+    @State private var address = ""
+
+    private var node: BookmarkNode? { store.tree?.byID[id] }
+    private var isBookmark: Bool { node?.kind == .leaf }
+    private var addressOK: Bool { !isBookmark || BookmarkStore.normalizedURL(address) != nil }
+    private var nameOK: Bool { !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L("Zmień nazwę", "Rename")).font(.headline)
-            if let url = store.tree?.byID[id]?.url {
-                Text(url).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+            Text(isBookmark ? L("Edytuj zakładkę", "Edit Bookmark") : L("Zmień nazwę folderu", "Rename Folder")).font(.headline)
+            TextField(L("Nazwa", "Name"), text: $name).textFieldStyle(.roundedBorder)
+            if isBookmark {
+                TextField(L("Adres, np. https://…", "Address, e.g. https://…"), text: $address)
+                    .textFieldStyle(.roundedBorder)
+                if !address.trimmingCharacters(in: .whitespaces).isEmpty, !addressOK {
+                    Text(L("To nie wygląda na adres strony.", "This does not look like a web address."))
+                        .font(.callout).foregroundStyle(.orange)
+                }
             }
-            TextField(L("Nazwa", "Name"), text: $text).textFieldStyle(.roundedBorder)
             HStack {
                 Spacer()
                 Button(L("Anuluj", "Cancel"), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button(L("Zmień", "Rename")) {
-                    store.rename(id, to: text)
+                Button(L("Zmień", "Change")) {
+                    store.edit(id, title: name, url: isBookmark ? address : nil)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(!nameOK || !addressOK)
             }
         }
         .padding(20)
-        .frame(width: 420)
+        .frame(width: 460)
         .onAppear {
-            if let node = store.tree?.byID[id] { text = node.rawTitle.isEmpty ? node.title : node.rawTitle }
+            guard let node else { return }
+            name = node.rawTitle.isEmpty ? node.title : node.rawTitle
+            address = node.url ?? ""
         }
     }
 }

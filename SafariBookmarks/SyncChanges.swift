@@ -8,7 +8,7 @@ import Foundation
 ///
 /// - nowy folder albo zakładka: `Type = Add` (bez `BookmarkServerID` – iCloud nada go sam),
 /// - przeniesienie albo zmiana kolejności: `Type = Modify`, `IsMove = true`,
-/// - nowa nazwa: `Type = Modify`, `ChangedAttributes = [Title]` (folder) albo `[Title, URL]` (zakładka),
+/// - nowa nazwa albo adres: `Type = Modify`, `ChangedAttributes = [Title]` (folder) albo `[Title, URL]` (zakładka),
 /// - usunięcie: `Type = Delete` z `DeletedBookmarkSyncData` = dotychczasowe `Sync.Data`,
 ///   osobno dla każdej usuniętej zakładki i folderu, najpierw zawartość, potem folder.
 ///
@@ -114,7 +114,8 @@ enum SyncChanges {
             if moved.contains(uuid) {
                 moves.append(entry(type: "Modify", bookmarkType: type, node: before.node, extra: ["IsMove": true]))
             }
-            if title(before.node) != title(after.node) {
+            let urlChanged = type == "Leaf" && (before.node["URLString"] as? String) != (after.node["URLString"] as? String)
+            if title(before.node) != title(after.node) || urlChanged {
                 let attrs = type == "Leaf" ? ["Title", "URL"] : ["Title"]
                 renames.append(entry(type: "Modify", bookmarkType: type, node: before.node, extra: ["ChangedAttributes": attrs]))
             }

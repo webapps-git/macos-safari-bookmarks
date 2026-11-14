@@ -48,6 +48,10 @@ final class BookmarkStore {
                 MainActor.assumeIsolated { self?.safariRunning = SafariControl.isRunning }
             }
         }
+        // Stan iCloud: plik może zmienić Safari albo program synchronizujący, więc sprawdzamy co kilka sekund.
+        Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshICloudState() }
+        }
     }
 
     // MARK: - Wczytywanie
@@ -65,6 +69,8 @@ final class BookmarkStore {
             fileDate = (try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.modificationDate] as? Date
             rebuild()
             error = nil
+            lastCheckedFileDate = nil
+            refreshICloudState()
         } catch {
             self.error = error
         }
@@ -338,9 +344,30 @@ final class BookmarkStore {
     }
 
     func rename(_ id: String, to newTitle: String) {
+        edit(id, title: newTitle, url: nil)
+    }
+
+    /// Zmiana nazwy i (dla zakładki) adresu. `url == nil` – adres bez zmian.
+    func edit(_ id: String, title newTitle: String, url newURL: String?) {
         let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let tree, lockReason(id) == nil, let node = tree.byID[id], !title.isEmpty, title != node.title else { return }
-        perform(L("Zmieniono nazwę „\(node.title)” na „\(title)”", "Renamed “\(node.title)” to “\(title)”")) {
+        guard let tree, lockReason(id) == nil, let node = tree.byID[id], let uuid = node.uuid, !title.isEmpty else { return }
+        var address: String?
+        if node.kind == .leaf, let newURL {
+            guard let a = Self.normalizedURL(newURL) else {
+                notice = L("To nie wygląda na adres strony – adres bez zmian.", "This does not look like a web address – the address is unchanged.")
+                return
+            }
+            if a != node.url { address = a }
+        }
+        let titleChanged = title != (node.rawTitle.isEmpty ? node.title : node.rawTitle)
+        guard titleChanged || address != nil else { return }
+        let label: String
+        switch (titleChanged, address != nil) {
+        case (true, false): label = L("Zmieniono nazwę „\(node.title)” na „\(title)”", "Renamed “\(node.title)” to “\(title)”")
+        case (false, true): label = L("Zmieniono adres „\(node.title)”", "Changed the address of “\(node.title)”")
+        default: label = L("Zmieniono nazwę i adres „\(node.title)” → „\(title)”", "Changed the name and address of “\(node.title)” → “\(title)”")
+        }
+        perform(label) {
             guard let loc = locate(id) else { throw OperationError(L("Nie znaleziono elementu.", "The item was not found.")) }
             switch node.kind {
             case .folder:
@@ -349,8 +376,12 @@ final class BookmarkStore {
                 let uri = loc.node["URIDictionary"] as? NSMutableDictionary ?? NSMutableDictionary()
                 uri["title"] = title
                 loc.node["URIDictionary"] = uri
+                if let address {
+                    loc.node["URLString"] = address
+                    removed.urlEdited.insert(uuid)
+                }
             default:
-                throw OperationError(L("Tego nie da się nazwać.", "This cannot be renamed."))
+                throw OperationError(L("Tego nie da się zmienić.", "This cannot be changed."))
             }
         }
     }
@@ -493,6 +524,53 @@ final class BookmarkStore {
     /// Czy zakładki Safari są synchronizowane z iCloud.
     var usesICloud: Bool { original.map(SyncChanges.isSynced) ?? false }
 
+    /// Stan wysyłki do iCloud – do kolorowej ikonki.
+    enum ICloudState: Equatable {
+        /// iCloud wyłączony dla zakładek Safari (albo tryb testowy).
+        case off
+        /// W pliku nic nie czeka.
+        case sent
+        /// Tyle zmian czeka na wysłanie.
+        case waiting(Int)
+        /// Coś nie tak (opis dla użytkownika); `count` – ile czeka.
+        case problem(String, count: Int)
+    }
+
+    private(set) var icloudState: ICloudState = .off
+    /// Ostatni błąd prośby do Safari (czyszczony, gdy nic już nie czeka).
+    private var lastSyncError: String?
+    /// Od kiedy coś czeka (do wykrycia, że wisi za długo).
+    private var pendingSince: Date?
+    private var lastCheckedFileDate: Date?
+    private var lastPendingCount = 0
+
+    /// Odświeża stan iCloud (plik czytany tylko po zmianie). Wywoływane co kilka sekund.
+    func refreshICloudState() {
+        guard !isTestFile, usesICloud else { icloudState = .off; return }
+        let date = (try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.modificationDate] as? Date
+        if date != lastCheckedFileDate || date == nil {
+            lastCheckedFileDate = date
+            lastPendingCount = pendingICloudChanges() ?? lastPendingCount
+        }
+        let n = lastPendingCount
+        guard n > 0 else {
+            pendingSince = nil
+            lastSyncError = nil
+            icloudState = .sent
+            return
+        }
+        let since = pendingSince ?? .now
+        pendingSince = since
+        if let lastSyncError {
+            icloudState = .problem(lastSyncError, count: n)
+        } else if Date.now.timeIntervalSince(since) > 120 {
+            icloudState = .problem(L("Zmiany czekają już ponad 2 minuty. Kliknij „Wyślij teraz” albo zrób dowolną zmianę zakładek w Safari.",
+                                     "Changes have been waiting for over 2 minutes. Click “Send Now” or make any bookmark change in Safari."), count: n)
+        } else {
+            icloudState = .waiting(n)
+        }
+    }
+
     /// Ile zmian czeka w pliku Safari na wysłanie do iCloud (odczyt z dysku).
     func pendingICloudChanges() -> Int? {
         guard let data = try? BookmarksFile.read(fileURL),
@@ -505,7 +583,7 @@ final class BookmarkStore {
         // Tryb testowy pracuje na kopii – Safari nie ruszamy.
         guard !isTestFile else { return nil }
         guard safariRunning else {
-            return L("Safari jest zamknięte, więc zmiany poczekają na wysłanie do iCloud.", "Safari is closed, so the changes will wait to be sent to iCloud.")
+            return L("Safari jest zamknięte, więc zmiany poczekają na wysłanie do iCloud. Otwórz Safari i kliknij „Wyślij teraz”.", "Safari is closed, so the changes will wait to be sent to iCloud. Open Safari and click “Send Now”.")
         }
         guard let data = try? BookmarksFile.read(fileURL),
               let root = try? PropertyListSerialization.propertyList(from: data, format: nil) as? NSDictionary else {
@@ -515,6 +593,9 @@ final class BookmarkStore {
         let item = SafariNudge.topReadingListItem(in: root) ?? SafariNudge.appItem
         let error = SafariNudge.run(item)
         log("  asked Safari to sync: " + (error ?? "OK"))
+        lastSyncError = error
+        lastCheckedFileDate = nil
+        refreshICloudState()
         return error
     }
 

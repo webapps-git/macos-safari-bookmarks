@@ -145,11 +145,11 @@ private struct MainToolbar: CustomizableToolbarContent {
                 .help(store.redoLabel.map { L("Ponów: \($0) (⇧⌘Z)", "Redo: \($0) (⇧⌘Z)") } ?? L("Ponów cofniętą zmianę (⇧⌘Z)", "Redo the undone change (⇧⌘Z)"))
         }
         ToolbarItem(id: "rename") {
-            Button(L("Zmień nazwę", "Rename"), systemImage: "pencil") {
+            Button(L("Edytuj", "Edit"), systemImage: "pencil") {
                 if let id = ui.singleSelection { ui.sheet = .rename(id) }
             }
             .disabled(!editable || ids.count != 1)
-            .help(L("Zmień nazwę zaznaczonej zakładki lub folderu (Enter)", "Rename the selected bookmark or folder (Return)"))
+            .help(L("Zmień nazwę i adres zaznaczonej zakładki albo nazwę folderu (Enter)", "Change the name and address of the selected bookmark, or the name of a folder (Return)"))
         }
         // Grupa – blok paska narzędzi mieści najwyżej 10 elementów.
         Group {
@@ -206,6 +206,11 @@ private struct MainToolbar: CustomizableToolbarContent {
             Button(L("Kopie zapasowe", "Backups"), systemImage: "clock.arrow.circlepath") { ui.sheet = .backups }
                 .help(L("Kopie zapasowe – przywróć zakładki z wcześniejszego zapisu", "Backups – restore the bookmarks from an earlier save"))
         }
+        // Grupa – blok paska narzędzi mieści najwyżej 10 elementów.
+        Group {
+        ToolbarItem(id: "icloud") {
+            ICloudStatusButton()
+        }
         ToolbarItem(id: "save") {
             Button {
                 ui.requestSave(store)
@@ -219,6 +224,95 @@ private struct MainToolbar: CustomizableToolbarContent {
             .help(store.hasChanges
                   ? L("Zapisz zmiany w zakładkach Safari (⌘S). Safari musi być otwarte.", "Save changes to Safari bookmarks (⌘S). Safari must be open.")
                   : L("Nie ma zmian do zapisania", "No changes to save"))
+        }
+        }
+    }
+}
+
+/// Kolorowa ikonka stanu iCloud: zielona – wysłano, pomarańczowa – czeka, czerwona – problem, szara – wyłączony.
+private struct ICloudStatusButton: View {
+    @Environment(BookmarkStore.self) private var store
+    @Environment(UIState.self) private var ui
+    @State private var showDetails = false
+
+    var body: some View {
+        Button {
+            showDetails.toggle()
+        } label: {
+            Label(L("iCloud", "iCloud"), systemImage: symbol)
+                .foregroundStyle(color)
+        }
+        .help(summary)
+        .popover(isPresented: $showDetails, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(summary, systemImage: symbol)
+                    .foregroundStyle(color)
+                    .font(.headline)
+                Text(details)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                if canSend {
+                    HStack {
+                        Spacer()
+                        Button(L("Wyślij teraz", "Send Now")) {
+                            showDetails = false
+                            ui.sendNow(store)
+                        }
+                        .disabled(!store.safariRunning)
+                    }
+                }
+            }
+            .padding(16)
+            .frame(width: 340)
+        }
+    }
+
+    private var canSend: Bool {
+        switch store.icloudState {
+        case .waiting, .problem: true
+        default: false
+        }
+    }
+
+    private var symbol: String {
+        switch store.icloudState {
+        case .off: "icloud.slash"
+        case .sent: "checkmark.icloud.fill"
+        case .waiting: "icloud.and.arrow.up.fill"
+        case .problem: "exclamationmark.icloud.fill"
+        }
+    }
+
+    private var color: Color {
+        switch store.icloudState {
+        case .off: .gray
+        case .sent: .green
+        case .waiting: .orange
+        case .problem: .red
+        }
+    }
+
+    private var summary: String {
+        switch store.icloudState {
+        case .off: L("iCloud wyłączony", "iCloud off")
+        case .sent: L("Wysłano do iCloud", "Sent to iCloud")
+        case .waiting(let n): L("Czeka na iCloud: \(n)", "Waiting for iCloud: \(n)")
+        case .problem(_, let n): L("Problem z wysłaniem: \(n)", "Problem sending: \(n)")
+        }
+    }
+
+    private var details: String {
+        switch store.icloudState {
+        case .off:
+            store.isTestFile
+                ? L("Tryb testowy – aplikacja pracuje na kopii i nic nie wysyła do iCloud.", "Test mode – the app works on a copy and sends nothing to iCloud.")
+                : L("Zakładki Safari nie są synchronizowane z iCloud na tym Macu.", "Safari bookmarks are not synced with iCloud on this Mac.")
+        case .sent:
+            L("Wszystkie zmiany są w iCloud. Inne urządzenia pobiorą je, gdy otworzysz na nich Safari.", "All changes are in iCloud. Other devices get them when you open Safari on them.")
+        case .waiting(let n):
+            L("\(n) zmian czeka w zakładkach Safari na wysłanie. Zwykle idą w ciągu kilku sekund po zapisie.", "\(n) changes are waiting in Safari bookmarks to be sent. They usually go within seconds after saving.")
+        case .problem(let text, _):
+            text
         }
     }
 }

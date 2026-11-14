@@ -1,6 +1,6 @@
 # Safari Bookmarks for macOS
 
-A bookmark manager for Safari on macOS. Move, rename, sort and delete bookmarks and folders without losing them.
+A bookmark manager for Safari on macOS. Add, edit, move, sort and delete bookmarks and folders without losing them.
 
 Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folders. Safari Bookmarks works on Safari's bookmarks file directly, checks every change before it is written and keeps a backup of each previous version.
 
@@ -14,7 +14,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 - **Drag and drop**: drop bookmarks and folders on a folder in the tree or in the list, change the order within a folder, move several items at once.
 - **New Bookmark** (⌘D): name and address, added at the end of the open folder. An address copied to the clipboard is filled in; `example.com` becomes `https://example.com/`; an empty name becomes the site name. Not available in the Reading List – add pages to it in Safari.
 - **New Folder** (⇧⌘N) in the open folder. Both are also in the toolbar and in the right-click menu.
-- **Rename** (Return), **Move to…** a folder picked from a list, **Delete** (Delete key, with confirmation).
+- **Edit** (Return): name and address of a bookmark, name of a folder. **Move to…** a folder picked from a list, **Delete** (Delete key, with confirmation).
 - **Sort** the open folder alphabetically: folders first, bookmarks first or all together, optionally with all subfolders. The Reading List can be sorted alphabetically too. Polish and other accented letters are sorted correctly.
 - **Reading List**: single bookmarks can be moved between the Reading List and your folders. Folders cannot be moved into the Reading List, because Safari has no folders there.
 - **Search** in names and addresses across all folders, with the folder of each result.
@@ -22,6 +22,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 - **Unsaved changes** are not lost by accident: quitting the app or closing its window asks whether to save them. Closing the main window quits the app.
 - **Backups**: a copy of the bookmarks file is made before every save; any copy can be restored from the app.
 - **Info** for a bookmark or folder (right click): address, folder, date added, whether it syncs with iCloud.
+- **iCloud status** in the toolbar: green – everything sent, orange – changes waiting, red – a problem (for example no permission to control Safari), grey – iCloud off. A click shows details and a **Send Now** button.
 
 ## How saving keeps bookmarks safe
 
@@ -30,7 +31,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 - Before anything is written, the app checks the new file against the one it loaded:
   - every bookmark and folder is still there, except the ones you deleted, plus the ones you added;
   - the number of bookmarks matches;
-  - nothing changed except names and order: addresses, dates and iCloud sync data are untouched;
+  - nothing changed except names, order and the addresses you edited: dates and iCloud sync data are untouched;
   - the list of changes for iCloud (see below) only describes what you did;
   - Safari's own folders (Favorites, Bookmarks Menu, Reading List) stay in place.
 
@@ -44,7 +45,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 | --- | --- |
 | ⌘D | New bookmark |
 | ⇧⌘N | New folder |
-| Return | Rename |
+| Return | Edit (name and address) |
 | ⌫ | Delete (with confirmation) |
 | ⇧⌘M | Move to… |
 | ⌥⌘↑ / ⌥⌘↓ | Move up / down within the folder |
@@ -57,7 +58,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 
 Safari syncs bookmarks through iCloud in the background, also while Safari is closed. The sync does not compare the bookmarks file with iCloud: it only sends the changes listed in a list of changes inside the file, which Safari fills in itself.
 
-So that changes made in Safari Bookmarks reach your other devices, the app adds them to that list when saving, in the same form as Safari: new bookmarks and folders, moves and new order, new names, deletions. It does not change the sync data of the bookmarks themselves. The list is added only when iCloud sync is turned on for Safari.
+So that changes made in Safari Bookmarks reach your other devices, the app adds them to that list when saving, in the same form as Safari: new bookmarks and folders, moves and new order, new names and addresses, deletions. It does not change the sync data of the bookmarks themselves. The list is added only when iCloud sync is turned on for Safari.
 
 - Changes saved with version 1.0.0 were not added to the list, so iCloud did not get them. **Bookmarks → Send Old Changes to iCloud…** works them out from the backups (moves, order, renames, deletions), shows what will be sent, including every deleted item, and adds them to the list. Then save.
 

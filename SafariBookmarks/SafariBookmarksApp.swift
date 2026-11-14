@@ -242,7 +242,7 @@ private struct EditCommands: View {
             .keyboardShortcut("n", modifiers: [.command, .shift])
             .disabled(ui.sheet != nil || store.folderForNewFolder(preferred: ui.isSearching ? nil : ui.folderID) == nil)
         Divider()
-        Button(L("Zmień nazwę…  (Enter)", "Rename…  (Return)")) { if let id = ui.singleSelection { ui.sheet = .rename(id) } }
+        Button(L("Edytuj…  (Enter)", "Edit…  (Return)")) { if let id = ui.singleSelection { ui.sheet = .rename(id) } }
             .disabled(!editable || ids.count != 1)
         Button(L("Przenieś do…", "Move to…")) { ui.sheet = .move(ids) }
             .keyboardShortcut("m", modifiers: [.command, .shift])

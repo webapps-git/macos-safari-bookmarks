@@ -4,6 +4,7 @@ import Foundation
 /// Kontrola przed zapisem. Porównuje nowy plik ze stanem wczytanym z dysku.
 ///
 /// Wolno zmienić tylko: kolejność i rodziców węzłów, Title folderu, URIDictionary.title zakładki,
+/// URLString zakładki, której adres zmienił użytkownik,
 /// usunąć całe poddrzewa, które użytkownik jawnie usunął, dodać nowe foldery i zakładki, i dopisać wpisy do listy zmian
 /// dla iCloud (`Sync.Changes` w korzeniu). Wszystko inne (UUID, Sync węzłów, URL, daty,
 /// pozostałe klucze, korzeń, foldery główne) musi być identyczne.
@@ -23,6 +24,8 @@ enum Verifier {
         var addedLeaves = 0
         /// Wpisy dla iCloud dosłane ze starych zapisów (Token).
         var resent: Set<String> = []
+        /// UUID zakładek, którym użytkownik zmienił adres.
+        var urlEdited: Set<String> = []
         var leaves = 0
         var missingUUID = 0
 
@@ -109,6 +112,12 @@ enum Verifier {
         return copy
     }
 
+    private static func without(_ d: NSDictionary, key: String) -> NSDictionary {
+        let copy = NSMutableDictionary(dictionary: d)
+        copy.removeObject(forKey: key)
+        return copy
+    }
+
     /// Ten sam słownik bez danych iCloud.
     private static func withoutSync(_ d: NSDictionary) -> NSDictionary {
         let copy = NSMutableDictionary(dictionary: d)
@@ -157,7 +166,13 @@ enum Verifier {
         // 3. Każdy węzeł: wszystko poza nazwą bez zmian (UUID, Sync, URL, typ, daty…).
         var changed: [String] = []
         for (uuid, attrs) in new.attrs {
-            guard let before = old.attrs[uuid] else { continue }
+            guard var before = old.attrs[uuid] else { continue }
+            var attrs = attrs
+            // Zmieniony przez użytkownika adres nie jest błędem.
+            if removed.urlEdited.contains(uuid) {
+                before = without(before, key: "URLString")
+                attrs = without(attrs, key: "URLString")
+            }
             let same = syncMayChange ? withoutSync(before).isEqual(withoutSync(attrs)) : before.isEqual(attrs)
             if !same { changed.append(uuid) }
         }

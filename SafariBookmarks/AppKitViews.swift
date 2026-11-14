@@ -70,7 +70,7 @@ enum NodeMenu {
 
         let reason = ids.lazy.compactMap { store.lockReason($0) }.first
         let editable = reason == nil
-        menu.addItem(ClosureMenuItem(L("Zmień nazwę…", "Rename…"), enabled: editable && single != nil) {
+        menu.addItem(ClosureMenuItem(L("Edytuj…", "Edit…"), enabled: editable && single != nil) {
             if let single { ui.sheet = .rename(single) }
         })
         menu.addItem(ClosureMenuItem(L("Przenieś do…", "Move to…"), enabled: editable) { ui.sheet = .move(ids) })

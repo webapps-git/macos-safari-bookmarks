@@ -75,6 +75,11 @@ final class UIState {
         }
     }
 
+    /// Przycisk „Wyślij teraz” przy ikonce iCloud.
+    func sendNow(_ store: BookmarkStore) {
+        Task { await sendToICloud(store) }
+    }
+
     /// Po zapisie: prośba do Safari o wysłanie zmian do iCloud i krótkie czekanie na wynik.
     private func sendToICloud(_ store: BookmarkStore) async {
         guard store.usesICloud, !store.isTestFile, (store.pendingICloudChanges() ?? 0) > 0 else { return }
