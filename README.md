@@ -4,17 +4,9 @@ A bookmark manager for Safari on macOS. Move, rename, sort and delete bookmarks 
 
 Rearranging bookmarks by drag and drop in Safari's sidebar can lose whole folders. Safari Bookmarks works on Safari's bookmarks file directly, checks every change before it is written and keeps a backup of each previous version.
 
-## ⚠️ Unsolved problem: changes reach iCloud only after an edit in Safari
+## ⚠️ Unsolved problem: Reading List order on iPhone after sorting
 
-Changes saved in the app reach iCloud and your other devices only after you **make any small change to your bookmarks in Safari itself** (for example, move a bookmark down and back). Until then they wait in the bookmarks file on the Mac. Opening Safari is not enough.
-
-Why:
-
-- Safari's sync program sends the changes listed in the bookmarks file, including the ones added by this app, but only when Safari tells it to.
-- Safari tells it only after Safari itself saves bookmarks. Opening Safari, or Safari reloading the file after the app changed it, does not do it.
-- The app cannot tell the sync program to start: it accepts this request only from Apple's own programs with a special permission that other apps cannot get.
-
-Tested on 13 November 2026: after a small edit in Safari, all waiting changes (moves, order, renames, deletions) were sent and accepted by iCloud; a moved bookmark showed up in its new folder on an iPhone. A way to start the sending from the app is not found yet.
+After the Reading List was sorted alphabetically in the app, an iPhone shows it in exactly the **reverse order** of the Mac (Z at the top). A Reading List item that Safari on the Mac put at the top also shows up at the bottom on the iPhone. The cause is not known yet. Until it is, sorting the Reading List is best avoided.
 
 ## Features
 
@@ -34,7 +26,7 @@ Tested on 13 November 2026: after a small edit in Safari, all waiting changes (m
 ## How saving keeps bookmarks safe
 
 - Changes stay in the app until you click **Save**.
-- Safari must be closed. The app never quits Safari by itself; while Safari is open, a bar at the top says so and saving is blocked.
+- Safari must be open: Safari watches its bookmarks file and loads the saved changes right away. While Safari is closed, a bar at the top says so and saving is blocked; the bar has a button to open Safari. The app never quits Safari.
 - Before anything is written, the app checks the new file against the one it loaded:
   - every bookmark and folder is still there, except the ones you deleted, plus the ones you added;
   - the number of bookmarks matches;
@@ -67,8 +59,18 @@ Safari syncs bookmarks through iCloud in the background, also while Safari is cl
 
 So that changes made in Safari Bookmarks reach your other devices, the app adds them to that list when saving, in the same form as Safari: new bookmarks and folders, moves and new order, new names, deletions. It does not change the sync data of the bookmarks themselves. The list is added only when iCloud sync is turned on for Safari.
 
-- Changes saved with version 1.0.0 were not added to the list, so iCloud did not get them. **Bookmarks → Send Old Changes to iCloud…** works them out from the backups (moves, order, renames, deletions), shows what will be sent, including every deleted item, and adds them to the list. Save, then make a small change in Safari (see the unsolved problem at the top).
-- Changes go to iCloud only after Safari itself saves bookmarks; until then they wait in the file. See the unsolved problem at the top.
+- Changes saved with version 1.0.0 were not added to the list, so iCloud did not get them. **Bookmarks → Send Old Changes to iCloud…** works them out from the backups (moves, order, renames, deletions), shows what will be sent, including every deleted item, and adds them to the list. Then save.
+
+### How the changes are sent
+
+Safari's sync program sends the list only when Safari tells it to, and Safari does that only after it saves bookmarks itself. The sync program does not accept this request from any other app: it needs a private Apple permission that only Safari has.
+
+So right after saving, the app asks Safari (AppleScript) to add the **top item of the Reading List** again, with the same address, title and preview text. Safari replaces that item with a new one, saves its bookmarks and sends everything waiting in the list to iCloud, the app's changes included. The app waits up to 30 seconds and shows "Sent to iCloud" when the list is empty.
+
+- The first time, macOS asks whether Safari Bookmarks may control Safari. Without this permission (System Settings → Privacy & Security → Automation) the changes wait until your next bookmark change in Safari.
+- Side effect: the top Reading List item gets today's date added and may lose its picture until Safari loads it again.
+- With an empty Reading List the app cannot ask Safari; the changes wait until your next bookmark change in Safari.
+- Tested on 14 November 2026: the change showed up on an iPhone a few seconds after saving.
 
 ## Requirements
 

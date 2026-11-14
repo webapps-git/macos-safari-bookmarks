@@ -37,8 +37,9 @@ final class BookmarkStore {
     var undoLabel: String? { undoStack.last?.label }
     var redoLabel: String? { redoStack.last?.label }
 
-    /// Czy Safari blokuje zapis (plik testowy – nigdy).
-    var safariBlocksSaving: Bool { !isTestFile && safariRunning }
+    /// Czy zapis jest zablokowany, bo Safari jest zamknięte (plik testowy – nigdy).
+    /// Zapis idzie przy otwartym Safari: Safari samo wczytuje zmieniony plik.
+    var safariBlocksSaving: Bool { !isTestFile && !safariRunning }
 
     init() {
         let center = NSWorkspace.shared.notificationCenter
@@ -487,6 +488,38 @@ final class BookmarkStore {
         }
     }
 
+    // MARK: - Wysyłka do iCloud
+
+    /// Czy zakładki Safari są synchronizowane z iCloud.
+    var usesICloud: Bool { original.map(SyncChanges.isSynced) ?? false }
+
+    /// Ile zmian czeka w pliku Safari na wysłanie do iCloud (odczyt z dysku).
+    func pendingICloudChanges() -> Int? {
+        guard let data = try? BookmarksFile.read(fileURL),
+              let root = try? PropertyListSerialization.propertyList(from: data, format: nil) as? NSDictionary else { return nil }
+        return SafariNudge.pendingCount(root)
+    }
+
+    /// Prosi Safari o zapis zakładek, po którym Safari wysyła czekające zmiany do iCloud. Zwraca błąd albo nil.
+    func askSafariToSync() -> String? {
+        // Tryb testowy pracuje na kopii – Safari nie ruszamy.
+        guard !isTestFile else { return nil }
+        guard safariRunning else {
+            return L("Safari jest zamknięte, więc zmiany poczekają na wysłanie do iCloud.", "Safari is closed, so the changes will wait to be sent to iCloud.")
+        }
+        guard let data = try? BookmarksFile.read(fileURL),
+              let root = try? PropertyListSerialization.propertyList(from: data, format: nil) as? NSDictionary else {
+            return L("Nie udało się odczytać zakładek Safari.", "Could not read Safari bookmarks.")
+        }
+        guard let item = SafariNudge.topReadingListItem(in: root) else {
+            return L("Lista Czytelnicza jest pusta, więc aplikacja nie może poprosić Safari o wysłanie. Zmiany pójdą do iCloud przy następnej zmianie zakładek w Safari.",
+                     "The Reading List is empty, so the app cannot ask Safari to send. The changes will go to iCloud with your next bookmark change in Safari.")
+        }
+        let error = SafariNudge.run(item)
+        log("  asked Safari to sync: " + (error ?? "OK"))
+        return error
+    }
+
     // MARK: - Cofanie
 
     func undo() { step(from: &undoStack, to: &redoStack) }
@@ -547,7 +580,7 @@ final class BookmarkStore {
         }
     }
 
-    /// Zapis bieżących zmian. Safari musi być zamknięte – aplikacja go nie zamyka.
+    /// Zapis bieżących zmian. Safari musi być otwarte – samo wczytuje zmieniony plik.
     func save() async -> WriteResult {
         guard let root, let baseline, let original, hasChanges, !isWriting else { return .failed(L("Nie ma czego zapisać.", "There is nothing to save.")) }
         isWriting = true
@@ -598,7 +631,7 @@ final class BookmarkStore {
 
     private func write(_ newData: Data, expectedHash: String, recheck: @escaping (Data) -> [String]) async -> WriteResult {
         do {
-            if safariBlocksSaving { throw FileError.safariRunning }
+            if safariBlocksSaving { throw FileError.safariClosed }
             let current = try BookmarksFile.read(fileURL)
             guard Verifier.hash(current) == expectedHash else { throw FileError.changedOutside }
             let backup = try Backups.make(from: current, testMode: isTestFile)

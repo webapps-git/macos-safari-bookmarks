@@ -5,7 +5,7 @@ enum FileError: LocalizedError {
     case noPermission(URL)
     case notABookmarksFile
     case backupMismatch
-    case safariRunning
+    case safariClosed
     case changedOutside
     case writeMismatch
 
@@ -14,7 +14,7 @@ enum FileError: LocalizedError {
         case .noPermission: L("Aplikacja nie ma dostępu do zakładek Safari. Daj jej Pełny dostęp do dysku w Ustawieniach systemowych.", "The app has no access to Safari bookmarks. Give it Full Disk Access in System Settings.")
         case .notABookmarksFile: L("To nie jest plik zakładek Safari.", "This is not a Safari bookmarks file.")
         case .backupMismatch: L("Kopia nie wyszła poprawnie. Nic nie zapisano.", "The backup did not come out right. Nothing was saved.")
-        case .safariRunning: L("Safari jest otwarte. Zamknij Safari i zapisz jeszcze raz.", "Safari is open. Quit Safari and save again.")
+        case .safariClosed: L("Safari jest zamknięte. Otwórz Safari i zapisz jeszcze raz.", "Safari is closed. Open Safari and save again.")
         case .changedOutside: L("Zakładki zmieniły się w międzyczasie (w Safari albo przez iCloud). Nic nie zapisano. Wczytaj zakładki ponownie (⌘R) i powtórz zmiany.", "The bookmarks changed in the meantime (in Safari or through iCloud). Nothing was saved. Reload the bookmarks (⌘R) and make your changes again.")
         case .writeMismatch: L("Po zapisie plik wygląda inaczej, niż powinien. Sprawdź zakładki, w razie potrzeby przywróć kopię.", "After saving, the file does not look as it should. Check your bookmarks and restore a backup if needed.")
         }

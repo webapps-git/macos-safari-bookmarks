@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 – 2026-11-14
+
+- Saving now works only while Safari is open (before: only while Safari was closed). Safari loads the changed file right away. While Safari is closed, a bar says so and has an Open Safari button. The same applies to restoring a backup.
+- Changes now reach iCloud right after saving: the app asks Safari (AppleScript) to add the top Reading List item again with the same address, title and preview text. Safari saves its bookmarks and sends everything waiting to iCloud. The app shows "Sent to iCloud" when done. macOS asks once for permission to control Safari. Side effect: that one Reading List item gets today's date.
+- Tested with a real iCloud account: a change saved in the app showed up on an iPhone a few seconds later.
+- Known problem: after sorting the Reading List in the app, an iPhone shows it in reverse order (see README).
+
 ## 1.2.0 – 2026-11-13
 
 - Bookmarks → Send Old Changes to iCloud…: changes saved with 1.0.0 never reached iCloud. The app works them out from its backups (moves, order, renames, deletions), shows a summary with the list of deleted items, and adds them to Safari's list of changes for iCloud. Bookmarks on the Mac do not change. Can be done once.

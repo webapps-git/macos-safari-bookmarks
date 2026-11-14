@@ -187,8 +187,8 @@ struct ResendSheet: View {
                 }
                 .frame(minHeight: 160)
             }
-            Text(L("Zakładki na Macu się nie zmienią. Po „Przygotuj” zapisz (⌘S) przy zamkniętym Safari, potem otwórz Safari – wtedy zmiany pójdą do iCloud.",
-                   "Bookmarks on this Mac will not change. After “Prepare”, save (⌘S) with Safari closed, then open Safari – that is when the changes go to iCloud."))
+            Text(L("Zakładki na Macu się nie zmienią. Po „Przygotuj” zapisz (⌘S) przy otwartym Safari.",
+                   "Bookmarks on this Mac will not change. After “Prepare”, save (⌘S) while Safari is open."))
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
@@ -293,7 +293,7 @@ struct BackupsSheet: View {
                 Text(L("Masz niezapisane zmiany – zapisz je albo odrzuć, zanim przywrócisz kopię.", "You have unsaved changes – save or discard them before restoring a backup."))
                     .font(.callout).foregroundStyle(.orange)
             } else if store.safariBlocksSaving {
-                Text(L("Safari jest otwarte – żeby przywrócić kopię, zamknij Safari.", "Safari is open – quit Safari to restore a backup."))
+                Text(L("Safari jest zamknięte – żeby przywrócić kopię, otwórz Safari.", "Safari is closed – open Safari to restore a backup."))
                     .font(.callout).foregroundStyle(.orange)
             }
             HStack {

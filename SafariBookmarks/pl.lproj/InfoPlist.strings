@@ -1,2 +1,3 @@
 "CFBundleDisplayName" = "Safari Bookmarks";
 "NSHumanReadableCopyright" = "© 2026 Web Apps Piotr Piwoński";
+"NSAppleEventsUsageDescription" = "Safari Bookmarks prosi Safari o zapis zakładek, żeby Twoje zmiany poszły do iCloud.";

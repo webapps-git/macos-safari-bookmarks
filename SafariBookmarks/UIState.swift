@@ -51,9 +51,9 @@ final class UIState {
     func requestSave(_ store: BookmarkStore) {
         guard store.hasChanges, !store.isWriting else { return }
         if store.safariBlocksSaving {
-            message = Message(title: L("Najpierw zamknij Safari", "Quit Safari first"),
-                              text: L("Zmiany można zapisać dopiero po zamknięciu Safari. Aplikacja sama go nie zamyka.",
-                                      "Changes can only be saved after Safari is closed. The app does not quit Safari by itself."))
+            message = Message(title: L("Najpierw otwórz Safari", "Open Safari first"),
+                              text: L("Zmiany zapisuje się przy otwartym Safari – wtedy Safari od razu je wczytuje. Otwórz Safari i zapisz jeszcze raz.",
+                                      "Changes are saved while Safari is open – Safari then loads them right away. Open Safari and save again."))
             return
         }
         let problems = store.verify()
@@ -67,9 +67,34 @@ final class UIState {
     func performSave(_ store: BookmarkStore) {
         Task {
             switch await store.save() {
-            case .ok: showToast(L("Zapisano", "Saved"))
+            case .ok:
+                showToast(L("Zapisano", "Saved"))
+                await sendToICloud(store)
             case .failed(let text): message = Message(title: L("Nie zapisano", "Not saved"), text: text)
             }
+        }
+    }
+
+    /// Po zapisie: prośba do Safari o wysłanie zmian do iCloud i krótkie czekanie na wynik.
+    private func sendToICloud(_ store: BookmarkStore) async {
+        guard store.usesICloud, !store.isTestFile, (store.pendingICloudChanges() ?? 0) > 0 else { return }
+        if let error = store.askSafariToSync() {
+            message = Message(title: L("Zapisano, ale nie wysłano do iCloud", "Saved, but not sent to iCloud"), text: error)
+            return
+        }
+        var pending = store.pendingICloudChanges() ?? 0
+        for _ in 0..<30 where pending > 0 {
+            try? await Task.sleep(for: .seconds(1))
+            pending = store.pendingICloudChanges() ?? 0
+        }
+        // Safari zapisało zakładki – wczytaj je od nowa, żeby następny zapis nie trafił na „zmienione w międzyczasie”.
+        if !store.hasChanges { store.reload() }
+        if pending == 0 {
+            showToast(L("Wysłano do iCloud", "Sent to iCloud"))
+        } else {
+            message = Message(title: L("Zmiany czekają na iCloud", "Changes are waiting for iCloud"),
+                              text: L("Safari dostało prośbę o wysłanie, ale po 30 sekundach zmiany wciąż czekają. Pójdą, gdy iCloud będzie dostępny.",
+                                      "Safari was asked to send, but after 30 seconds the changes are still waiting. They will go when iCloud is available."))
         }
     }
 

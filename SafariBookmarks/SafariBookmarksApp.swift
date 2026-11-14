@@ -90,8 +90,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var text = L("Masz niezapisane zmiany: \(store.history.count). Jeśli ich nie zapiszesz, przepadną.",
                      "You have unsaved changes: \(store.history.count). If you do not save them, they will be lost.")
         if store.safariBlocksSaving {
-            text += "\n\n" + L("Safari jest otwarte – żeby zapisać, najpierw zamknij Safari.",
-                                "Safari is open – to save, quit Safari first.")
+            text += "\n\n" + L("Safari jest zamknięte – żeby zapisać, najpierw otwórz Safari.",
+                                "Safari is closed – to save, open Safari first.")
         }
         alert.informativeText = text
         alert.addButton(withTitle: L("Zapisz", "Save"))
@@ -114,9 +114,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func save(_ store: BookmarkStore) -> NSApplication.TerminateReply {
         if store.safariBlocksSaving {
-            Self.inform(L("Najpierw zamknij Safari", "Quit Safari first"),
-                        L("Zmiany można zapisać dopiero po zamknięciu Safari. Aplikacja zostaje otwarta.",
-                          "Changes can only be saved after Safari is closed. The app stays open."))
+            Self.inform(L("Najpierw otwórz Safari", "Open Safari first"),
+                        L("Zmiany zapisuje się przy otwartym Safari. Aplikacja zostaje otwarta.",
+                          "Changes are saved while Safari is open. The app stays open."))
             return .terminateCancel
         }
         let problems = store.verify()

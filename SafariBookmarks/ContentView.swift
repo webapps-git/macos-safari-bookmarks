@@ -217,7 +217,7 @@ private struct MainToolbar: CustomizableToolbarContent {
             .buttonStyle(.borderedProminent)
             .tint(store.hasChanges ? .accentColor : .gray)
             .help(store.hasChanges
-                  ? L("Zapisz zmiany w zakładkach Safari (⌘S). Safari musi być zamknięte.", "Save changes to Safari bookmarks (⌘S). Safari must be closed.")
+                  ? L("Zapisz zmiany w zakładkach Safari (⌘S). Safari musi być otwarte.", "Save changes to Safari bookmarks (⌘S). Safari must be open.")
                   : L("Nie ma zmian do zapisania", "No changes to save"))
         }
     }
@@ -231,8 +231,15 @@ private struct Banners: View {
             banner(L("Tryb testowy: plik \(store.fileURL.lastPathComponent) zamiast zakładek Safari.", "Test mode: file \(store.fileURL.lastPathComponent) instead of Safari bookmarks."), color: .purple)
         }
         if store.safariBlocksSaving {
-            banner(L("Safari jest otwarte. Możesz porządkować, ale zapisać zmiany da się dopiero po zamknięciu Safari.", "Safari is open. You can organize, but changes can only be saved after Safari is closed."),
-                   color: .orange)
+            HStack {
+                Text(L("Safari jest zamknięte. Możesz porządkować, ale żeby zapisać zmiany, otwórz Safari.", "Safari is closed. You can organize, but to save changes, open Safari."))
+                    .font(.callout)
+                Spacer()
+                Button(L("Otwórz Safari", "Open Safari")) { Task { await SafariControl.launch() } }
+                    .controlSize(.small)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 4)
+            .background(Color.orange.opacity(0.15))
         }
         if let notice = store.notice {
             banner(notice, color: .red)
