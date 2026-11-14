@@ -312,6 +312,159 @@ struct DuplicatesSheet: View {
     }
 }
 
+// MARK: - Sprawdzanie linków
+
+struct LinkCheckSheet: View {
+    @Environment(BookmarkStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var total = 0
+    @State private var results: [LinkChecker.Result] = []
+    @State private var running = false
+    @State private var finished = false
+    @State private var task: Task<Void, Never>?
+    /// Zakładki z zaznaczoną poprawką adresu.
+    @State private var fix: Set<String> = []
+    /// Martwe zakładki zaznaczone do usunięcia.
+    @State private var remove: Set<String> = []
+
+    private var problems: [LinkChecker.Result] { results.filter { $0.verdict != .ok } }
+    private var okCount: Int { results.count - problems.count }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("Sprawdź linki", "Check Links")).font(.headline)
+            if !running && !finished {
+                Text(L("Aplikacja odwiedzi każdą zakładkę (\(store.linkCheckItems().count)) jak przeglądarka, ale bez ciasteczek i zapisanych logowań, i pokaże: martwe, przekierowane na stałe pod nowy adres oraz te, które działają też przez https. Każda strona zobaczy przy tym zwykłe wejście z Twojego adresu. Lista Czytelnicza i zakładki oznaczone „Pomijaj” nie są sprawdzane. Nic nie zmienia się bez Twojej zgody.",
+                       "The app visits every bookmark (\(store.linkCheckItems().count)) like a browser, but without cookies or saved logins, and shows: dead ones, ones permanently moved to a new address, and ones that also work over https. Each site sees an ordinary visit from your address. The Reading List and bookmarks marked “Skip” are not checked. Nothing changes without your approval."))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ProgressView(value: Double(results.count), total: Double(max(total, 1))) {
+                    Text(running ? L("Sprawdzono \(results.count) z \(total)", "Checked \(results.count) of \(total)")
+                                 : L("Sprawdzono \(results.count) z \(total) – działa: \(okCount), do przejrzenia: \(problems.count)", "Checked \(results.count) of \(total) – working: \(okCount), to review: \(problems.count)"))
+                }
+                List {
+                    section(L("Przekierowane na stałe – popraw adres", "Permanently moved – fix the address"), kind: .redirect)
+                    section(L("Działają przez https – zmień adres", "Work over https – change the address"), kind: .https)
+                    section(L("Martwe – zaznacz do usunięcia", "Dead – check to delete"), kind: .dead)
+                    section(L("Niepewne – tylko do wiadomości", "Unsure – for your information"), kind: .unsure)
+                }
+                .frame(minHeight: 380)
+            }
+            HStack {
+                if running {
+                    Button(L("Zatrzymaj", "Stop")) { task?.cancel() }
+                }
+                Spacer()
+                Button(L("Anuluj", "Cancel"), role: .cancel) { task?.cancel(); dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                if !running && !finished {
+                    Button(L("Sprawdź", "Check")) { start() }
+                        .keyboardShortcut(.defaultAction)
+                } else {
+                    Button(L("Zastosuj (\(fix.count + remove.count))", "Apply (\(fix.count + remove.count))")) { apply() }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(running || fix.count + remove.count == 0)
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 680)
+        .onDisappear { task?.cancel() }
+    }
+
+    private enum Kind { case redirect, https, dead, unsure }
+
+    private func kind(_ v: LinkChecker.Verdict) -> Kind? {
+        switch v {
+        case .ok: nil
+        case .redirected: .redirect
+        case .httpsAvailable: .https
+        case .dead: .dead
+        case .unsure: .unsure
+        }
+    }
+
+    @ViewBuilder
+    private func section(_ title: String, kind k: Kind) -> some View {
+        let items = problems.filter { kind($0.verdict) == k }
+        if !items.isEmpty {
+            Section(title + " (\(items.count))") {
+                ForEach(items) { r in row(r, kind: k) }
+            }
+        }
+    }
+
+    private func row(_ r: LinkChecker.Result, kind k: Kind) -> some View {
+        let node = store.tree?.byID[r.id]
+        let selection: Binding<Bool>? = switch k {
+        case .redirect, .https: Binding(get: { fix.contains(r.id) }, set: { if $0 { fix.insert(r.id) } else { fix.remove(r.id) } })
+        case .dead: Binding(get: { remove.contains(r.id) }, set: { if $0 { remove.insert(r.id) } else { remove.remove(r.id) } })
+        case .unsure: nil
+        }
+        return HStack(alignment: .top) {
+            if let selection {
+                Toggle(isOn: selection) { EmptyView() }.toggleStyle(.checkbox)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(node?.title ?? r.url).lineLimit(1)
+                Text(r.url).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                switch r.verdict {
+                case .redirected(let to), .httpsAvailable(let to):
+                    Text("→ " + to).font(.caption).foregroundStyle(.green).lineLimit(1).truncationMode(.middle)
+                case .dead(let why), .unsure(let why):
+                    Text(why).font(.caption).foregroundStyle(k == .dead ? .red : .orange)
+                case .ok:
+                    EmptyView()
+                }
+                Text(store.tree?.pathString(of: r.id) ?? "").font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(L("Pomijaj", "Skip")) { skip(r) }
+                .controlSize(.small)
+                .help(L("Nie sprawdzaj tej zakładki w przyszłości", "Do not check this bookmark in the future"))
+        }
+    }
+
+    private func start() {
+        let items = store.linkCheckItems()
+        total = items.count
+        results = []
+        running = true
+        task = Task {
+            await LinkChecker.check(items) { r in
+                results.append(r)
+                // Propozycja: poprawki adresów zaznaczone, usuwanie martwych – nie.
+                switch r.verdict {
+                case .redirected, .httpsAvailable: fix.insert(r.id)
+                default: break
+                }
+            }
+            running = false
+            finished = true
+        }
+    }
+
+    private func skip(_ r: LinkChecker.Result) {
+        if let uuid = store.tree?.byID[r.id]?.uuid { LinkChecker.skipped.insert(uuid) }
+        results.removeAll { $0.id == r.id }
+        fix.remove(r.id)
+        remove.remove(r.id)
+    }
+
+    private func apply() {
+        var changes: [String: String] = [:]
+        for r in results where fix.contains(r.id) {
+            switch r.verdict {
+            case .redirected(let to), .httpsAvailable(let to): changes[r.id] = to
+            default: break
+            }
+        }
+        store.updateAddresses(changes)
+        if !remove.isEmpty { store.delete(remove) }
+        dismiss()
+    }
+}
+
 // MARK: - Informacje
 
 struct InfoSheet: View {

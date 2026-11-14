@@ -15,6 +15,8 @@ final class UIState {
         case resend(ResendChanges.Plan)
         /// Zdublowane zakładki.
         case duplicates
+        /// Sprawdzanie linków.
+        case linkCheck
 
         var id: String {
             switch self {
@@ -25,6 +27,7 @@ final class UIState {
             case .backups: "backups"
             case .resend: "resend"
             case .duplicates: "duplicates"
+            case .linkCheck: "linkCheck"
             }
         }
     }

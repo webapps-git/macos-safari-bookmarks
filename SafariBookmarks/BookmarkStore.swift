@@ -386,6 +386,41 @@ final class BookmarkStore {
         }
     }
 
+    /// Nowe adresy dla wielu zakładek naraz (np. po sprawdzeniu linków) – jeden krok do cofnięcia.
+    func updateAddresses(_ changes: [String: String]) {
+        guard let tree else { return }
+        let valid = changes.compactMap { id, url -> (String, String, String)? in
+            guard lockReason(id) == nil, let node = tree.byID[id], node.kind == .leaf, let uuid = node.uuid,
+                  let a = Self.normalizedURL(url), a != node.url else { return nil }
+            return (id, uuid, a)
+        }
+        guard !valid.isEmpty else { return }
+        perform(L("Poprawiono adresy: \(valid.count)", "Fixed addresses: \(valid.count)")) {
+            for (id, uuid, address) in valid {
+                guard let loc = locate(id) else { throw OperationError(L("Nie znaleziono elementu.", "The item was not found.")) }
+                loc.node["URLString"] = address
+                removed.urlEdited.insert(uuid)
+            }
+        }
+    }
+
+    /// Zakładki do sprawdzenia linków: bez Listy Czytelniczej i bez pominiętych.
+    func linkCheckItems() -> [(id: String, url: String)] {
+        guard let tree else { return [] }
+        let skipped = LinkChecker.skipped
+        var out: [(id: String, url: String)] = []
+        func visit(_ node: BookmarkNode) {
+            for child in node.children ?? [] {
+                if child.isReadingListRoot { continue }
+                if child.kind == .leaf, let uuid = child.uuid, !skipped.contains(uuid), let url = child.url,
+                   url.lowercased().hasPrefix("http") { out.append((child.id, url)) }
+                visit(child)
+            }
+        }
+        visit(tree.root)
+        return out
+    }
+
     enum SortMode: String, CaseIterable, Identifiable {
         case foldersFirst, bookmarksFirst, mixed
         var id: String { rawValue }

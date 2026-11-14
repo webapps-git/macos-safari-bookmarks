@@ -262,6 +262,8 @@ private struct EditCommands: View {
         Divider()
         Button(L("Znajdź duplikaty…", "Find Duplicates…")) { ui.sheet = .duplicates }
             .disabled(ui.sheet != nil || store.tree == nil)
+        Button(L("Sprawdź linki…", "Check Links…")) { ui.sheet = .linkCheck }
+            .disabled(ui.sheet != nil || store.tree == nil)
         Divider()
         Button(L("Wyślij do iCloud stare zmiany…", "Send Old Changes to iCloud…")) { ui.openResend(store) }
             .disabled(store.hasChanges || ui.sheet != nil || store.tree == nil)

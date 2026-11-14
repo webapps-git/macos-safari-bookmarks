@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0 – 2026-11-14
+
+- Bookmarks → Check Links…: visits every bookmark (without cookies or saved logins, 8 at a time, only the start of each answer) and sorts the problems into: permanently moved (new address suggested), works over https (https suggested), dead (page or domain gone), unsure (login, blocking, server error, no answer). Address fixes are pre-checked, deletions are not; Apply makes one undoable step for the addresses and one for deletions. Skip hides a bookmark from future checks. The Reading List is not checked.
+
 ## 1.5.0 – 2026-11-14
 
 - Bookmarks → Find Duplicates…: groups of bookmarks with an identical address and "almost identical" ones (only http/https, "www." or a trailing slash differ), with folder and date added. For identical groups the app suggests keeping one – from Favorites, with https, or the oldest – and checks the others for deletion. Almost identical groups are left unchecked. Deleting is one step that can be undone until saving. The Reading List is skipped.
