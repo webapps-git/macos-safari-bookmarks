@@ -221,6 +221,97 @@ struct ResendSheet: View {
     }
 }
 
+// MARK: - Duplikaty
+
+struct DuplicatesSheet: View {
+    @Environment(BookmarkStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var groups: [Duplicates.Group] = []
+    /// Zakładki zaznaczone do usunięcia.
+    @State private var toRemove: Set<String> = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("Duplikaty", "Duplicates")).font(.headline)
+            if groups.isEmpty {
+                Text(L("Nie ma zdublowanych zakładek. (Lista Czytelnicza jest pominięta.)", "There are no duplicate bookmarks. (The Reading List is skipped.)"))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                Text(L("Zaznacz zakładki do usunięcia. W grupach z identycznym adresem aplikacja proponuje zostawić jedną: z Ulubionych, z https albo najstarszą. W grupach „prawie identycznych” (różnica tylko w http/https, „www.” albo ukośniku na końcu) nic nie jest zaznaczone – zdecyduj sam.",
+                       "Check the bookmarks to delete. In groups with an identical address the app suggests keeping one: from Favorites, with https or the oldest. In “almost identical” groups (only http/https, “www.” or a trailing slash differ) nothing is checked – you decide."))
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                List {
+                    ForEach(groups) { group in
+                        Section {
+                            ForEach(group.items) { item in
+                                row(item)
+                            }
+                        } header: {
+                            HStack {
+                                Text(group.identical ? L("Identyczne", "Identical") : L("Prawie identyczne", "Almost identical"))
+                                    .foregroundStyle(group.identical ? Color.primary : Color.orange)
+                                Text(group.key).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                .frame(minHeight: 360)
+            }
+            HStack {
+                Text(L("Grup: \(groups.count)", "Groups: \(groups.count)")).foregroundStyle(.secondary)
+                Spacer()
+                Button(L("Anuluj", "Cancel"), role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(L("Usuń zaznaczone (\(toRemove.count))", "Delete Checked (\(toRemove.count))")) {
+                    store.delete(toRemove)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(toRemove.isEmpty || !store.canEdit(toRemove))
+            }
+            Text(L("Usunięcie da się cofnąć (⌘Z) aż do zapisu.", "Deleting can be undone (⌘Z) until you save."))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(20)
+        .frame(width: 640)
+        .onAppear(perform: load)
+    }
+
+    private func row(_ item: BookmarkNode) -> some View {
+        let checked = Binding(get: { toRemove.contains(item.id) },
+                              set: { if $0 { toRemove.insert(item.id) } else { toRemove.remove(item.id) } })
+        return HStack(alignment: .top) {
+            Toggle(isOn: checked) { EmptyView() }
+                .toggleStyle(.checkbox)
+                .disabled(store.lockReason(item.id) != nil)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title).lineLimit(1)
+                Text(item.url ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                HStack(spacing: 8) {
+                    Label(store.tree?.pathString(of: item.id) ?? "", systemImage: "folder")
+                    if let date = item.dateAdded {
+                        Text(date.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(AppLanguage.locale)))
+                    }
+                }
+                .font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(checked.wrappedValue ? L("usuń", "delete") : L("zostaw", "keep"))
+                .font(.caption).foregroundStyle(checked.wrappedValue ? .red : .green)
+        }
+    }
+
+    private func load() {
+        guard let tree = store.tree else { return }
+        groups = Duplicates.find(in: tree)
+        // Propozycja: w identycznych zostaje pierwsza (najlepsza), reszta do usunięcia.
+        toRemove = Set(groups.filter(\.identical).flatMap { $0.items.dropFirst().map(\.id) }
+            .filter { store.lockReason($0) == nil })
+    }
+}
+
 // MARK: - Informacje
 
 struct InfoSheet: View {

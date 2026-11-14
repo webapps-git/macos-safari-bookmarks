@@ -18,6 +18,7 @@ After the Reading List was sorted alphabetically in the app, an iPhone shows it 
 - **Sort** the open folder alphabetically: folders first, bookmarks first or all together, optionally with all subfolders. The Reading List can be sorted alphabetically too. Polish and other accented letters are sorted correctly.
 - **Reading List**: single bookmarks can be moved between the Reading List and your folders. Folders cannot be moved into the Reading List, because Safari has no folders there.
 - **Search** in names and addresses across all folders, with the folder of each result.
+- **Find Duplicates** (Bookmarks menu): bookmarks with an identical address, and "almost identical" ones that differ only in http/https, "www." or a trailing slash. Each shows its folder and date added. For identical ones the app suggests keeping one (from Favorites, with https, or the oldest) and checks the rest for deletion; almost identical ones are left for you to decide. The Reading List is skipped.
 - **Undo and redo** (⌘Z, ⇧⌘Z) for every change until it is saved.
 - **Unsaved changes** are not lost by accident: quitting the app or closing its window asks whether to save them. Closing the main window quits the app.
 - **Backups**: a copy of the bookmarks file is made before every save; any copy can be restored from the app.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.0 – 2026-11-14
+
+- Bookmarks → Find Duplicates…: groups of bookmarks with an identical address and "almost identical" ones (only http/https, "www." or a trailing slash differ), with folder and date added. For identical groups the app suggests keeping one – from Favorites, with https, or the oldest – and checks the others for deletion. Almost identical groups are left unchecked. Deleting is one step that can be undone until saving. The Reading List is skipped.
+
 ## 1.4.0 – 2026-11-14
 
 - Edit instead of Rename (Return, toolbar, right-click menu): name and address of a bookmark in one window, like New Bookmark; name of a folder. A changed address goes to iCloud like a change made in Safari.

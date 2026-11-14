@@ -13,6 +13,8 @@ final class UIState {
         case backups
         /// Stare zmiany do dosłania do iCloud.
         case resend(ResendChanges.Plan)
+        /// Zdublowane zakładki.
+        case duplicates
 
         var id: String {
             switch self {
@@ -22,6 +24,7 @@ final class UIState {
             case .info: "info"
             case .backups: "backups"
             case .resend: "resend"
+            case .duplicates: "duplicates"
             }
         }
     }
