@@ -41,6 +41,7 @@ struct ContentView: View {
             case .resend(let plan): ResendSheet(plan: plan)
             case .duplicates: DuplicatesSheet()
             case .linkCheck: LinkCheckSheet()
+            case .importBookmarks: ImportSheet()
             }
         }
         .confirmationDialog(deleteTitle, isPresented: deleteBinding, titleVisibility: .visible) {

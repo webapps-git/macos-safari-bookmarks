@@ -265,6 +265,13 @@ private struct EditCommands: View {
         Button(L("Sprawdź linki…", "Check Links…")) { ui.sheet = .linkCheck }
             .disabled(ui.sheet != nil || store.tree == nil)
         Divider()
+        Button(L("Importuj zakładki…", "Import Bookmarks…")) { ui.sheet = .importBookmarks }
+            .disabled(ui.sheet != nil || store.tree == nil)
+        Button(L("Eksportuj wszystkie zakładki…", "Export All Bookmarks…")) { exportBookmarks(store, ui: ui, folder: nil) }
+            .disabled(ui.sheet != nil || store.tree == nil)
+        Button(L("Eksportuj otwarty folder…", "Export Open Folder…")) { exportBookmarks(store, ui: ui, folder: ui.folderID) }
+            .disabled(ui.sheet != nil || ui.isSearching || ui.folderID.flatMap { store.tree?.byID[$0] }?.isFolder != true)
+        Divider()
         Button(L("Wyślij do iCloud stare zmiany…", "Send Old Changes to iCloud…")) { ui.openResend(store) }
             .disabled(store.hasChanges || ui.sheet != nil || store.tree == nil)
     }

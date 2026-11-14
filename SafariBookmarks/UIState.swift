@@ -17,6 +17,8 @@ final class UIState {
         case duplicates
         /// Sprawdzanie linków.
         case linkCheck
+        /// Import zakładek z innych przeglądarek albo pliku HTML.
+        case importBookmarks
 
         var id: String {
             switch self {
@@ -28,6 +30,7 @@ final class UIState {
             case .resend: "resend"
             case .duplicates: "duplicates"
             case .linkCheck: "linkCheck"
+            case .importBookmarks: "import"
             }
         }
     }

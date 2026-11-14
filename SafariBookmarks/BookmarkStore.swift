@@ -263,6 +263,70 @@ final class BookmarkStore {
         return self.tree?.byID[uuid] != nil ? uuid : nil
     }
 
+    // MARK: - Import i eksport
+
+    /// Wstawia zaimportowane zakładki jako nowy folder `folderTitle` w `target`. Zwraca id folderu.
+    @discardableResult
+    func importBookmarks(_ source: ImportExport.Node, folderTitle: String, into target: String) -> String? {
+        guard canAddFolder(in: target), let tree, let folder = tree.byID[target] else {
+            notice = L("Tu nie można zaimportować zakładek.", "Bookmarks cannot be imported here.")
+            return nil
+        }
+        var uuids: [String] = []
+        var leaves = 0
+        /// Folder albo zakładka w formacie Safari; puste foldery pomijane.
+        func build(_ n: ImportExport.Node) -> NSMutableDictionary? {
+            let uuid = UUID().uuidString
+            if let url = n.url {
+                uuids.append(uuid)
+                leaves += 1
+                let title = n.title.isEmpty ? (URL(string: url)?.host ?? url) : n.title
+                return ["WebBookmarkType": "WebBookmarkTypeLeaf", "WebBookmarkUUID": uuid, "URLString": url,
+                        "URIDictionary": NSMutableDictionary(dictionary: ["title": title]), "dateAdded": n.dateAdded ?? Date()]
+            }
+            let kids = (n.children ?? []).compactMap(build)
+            guard !kids.isEmpty else { return nil }
+            uuids.append(uuid)
+            return ["WebBookmarkType": "WebBookmarkTypeList", "WebBookmarkUUID": uuid,
+                    "Title": n.title.isEmpty ? L("Bez nazwy", "Untitled") : n.title,
+                    "Children": NSMutableArray(array: kids), "dateAdded": n.dateAdded ?? Date()]
+        }
+        guard let node = build(ImportExport.Node(title: folderTitle, dateAdded: Date(), children: source.children ?? [])) else {
+            notice = L("Nie ma czego importować.", "There is nothing to import.")
+            return nil
+        }
+        let uuid = node["WebBookmarkUUID"] as! String
+        let insertAt = (folder.children ?? []).lastIndex { $0.isFolder }.map { $0 + 1 } ?? 0
+        perform(L("Zaimportowano „\(folderTitle)” (\(Plural.bookmarks(leaves)))", "Imported “\(folderTitle)” (\(Plural.bookmarks(leaves)))")) {
+            guard let parent = locate(target)?.node else { throw OperationError(L("Nie znaleziono folderu.", "The folder was not found.")) }
+            let children = parent["Children"] as? NSMutableArray ?? NSMutableArray()
+            parent["Children"] = children
+            children.insert(node, at: min(insertAt, children.count))
+            for u in uuids { removed.added[u, default: 0] += 1 }
+            removed.addedLeaves += leaves
+        }
+        return self.tree?.byID[uuid] != nil ? uuid : nil
+    }
+
+    /// Plik HTML z zakładkami: wszystkie (bez Listy Czytelniczej i Historii) albo jeden folder.
+    func exportHTML(folder id: String? = nil) -> String? {
+        guard let root, let tree else { return nil }
+        var top: [(title: String, node: NSDictionary)] = []
+        if let id {
+            guard let node = tree.byID[id], node.isFolder, let dict = locate(id)?.node else { return nil }
+            top = [(node.title, dict)]
+        } else {
+            for child in root["Children"] as? [NSDictionary] ?? [] {
+                guard child["WebBookmarkType"] as? String == "WebBookmarkTypeList",
+                      child["Title"] as? String != "com.apple.ReadingList",
+                      let uuid = child["WebBookmarkUUID"] as? String, let node = tree.byID[uuid] else { continue }
+                top.append((node.title, child))
+            }
+        }
+        let bar = tree.root.children?.first { $0.rawTitle == "BookmarksBar" }?.title
+        return ImportExport.exportHTML(top, toolbarTitle: bar)
+    }
+
     // MARK: - Operacje
 
     private func locate(_ uuid: String, in node: NSMutableDictionary? = nil) -> (parent: NSMutableArray, index: Int, node: NSMutableDictionary)? {

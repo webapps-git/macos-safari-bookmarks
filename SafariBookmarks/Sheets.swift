@@ -465,6 +465,122 @@ struct LinkCheckSheet: View {
     }
 }
 
+// MARK: - Import i eksport
+
+/// Zapis zakładek do pliku HTML (Chrome, Edge i Firefox wczytują go przez „Importuj zakładki”).
+func exportBookmarks(_ store: BookmarkStore, ui: UIState, folder: String?) {
+    guard let html = store.exportHTML(folder: folder) else { return }
+    let panel = NSSavePanel()
+    let name = folder.flatMap { store.tree?.byID[$0]?.title } ?? L("Zakładki Safari", "Safari Bookmarks")
+    let date = Date.now.formatted(.iso8601.year().month().day())
+    panel.nameFieldStringValue = "\(name) \(date).html"
+    panel.allowedContentTypes = [.html]
+    panel.message = L("Ten plik wczyta Chrome, Edge i Firefox (Importuj zakładki → plik HTML).", "Chrome, Edge and Firefox can read this file (Import bookmarks → HTML file).")
+    guard panel.runModal() == .OK, let url = panel.url else { return }
+    do {
+        try Data(html.utf8).write(to: url, options: .atomic)
+        ui.showToast(L("Wyeksportowano", "Exported"))
+    } catch {
+        ui.message = UIState.Message(title: L("Nie zapisano pliku", "File not saved"), text: error.localizedDescription)
+    }
+}
+
+struct ImportSheet: View {
+    @Environment(BookmarkStore.self) private var store
+    @Environment(UIState.self) private var ui
+    @Environment(\.dismiss) private var dismiss
+    @State private var sources: [ImportExport.Source] = []
+    @State private var selected: ImportExport.Source?
+    @State private var loaded: ImportExport.Node?
+    @State private var error: String?
+
+    private var target: String? { store.folderForNewFolder(preferred: ui.isSearching ? nil : ui.folderID) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("Importuj zakładki", "Import Bookmarks")).font(.headline)
+            Text(L("Zakładki innej przeglądarki są tylko odczytywane – nic się w niej nie zmienia. Trafią do nowego folderu, skąd możesz je przeciągnąć; potem przydadzą się „Duplikaty”.",
+                   "The other browser's bookmarks are only read – nothing changes there. They go into a new folder you can drag them from; “Duplicates” helps afterwards."))
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            List(selection: $selected) {
+                Section(L("Przeglądarki na tym Macu", "Browsers on this Mac")) {
+                    if sources.filter({ $0.kind != .html }).isEmpty {
+                        Text(L("Nie znaleziono Chrome, Edge ani Firefoksa.", "Chrome, Edge or Firefox were not found.")).foregroundStyle(.secondary)
+                    }
+                    ForEach(sources.filter { $0.kind != .html }) { s in
+                        Label(s.title, systemImage: "globe").tag(s)
+                    }
+                }
+                if let html = sources.first(where: { $0.kind == .html }) {
+                    Section(L("Plik", "File")) {
+                        Label(html.title, systemImage: "doc.text").tag(html)
+                    }
+                }
+            }
+            .frame(minHeight: 200)
+            HStack {
+                Button(L("Wybierz plik HTML…", "Choose HTML File…")) { chooseFile() }
+                Spacer()
+                if let loaded {
+                    Text(L("\(Plural.bookmarks(loaded.bookmarkCount)), \(Plural.folders(loaded.folderCount))", "\(Plural.bookmarks(loaded.bookmarkCount)), \(Plural.folders(loaded.folderCount))"))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let error {
+                Text(error).font(.callout).foregroundStyle(.red)
+            } else if let selected, loaded != nil, let target, let name = store.tree?.byID[target]?.title {
+                Text(L("Trafią do nowego folderu „\(folderTitle(selected))” w „\(name)”.", "They go into a new folder “\(folderTitle(selected))” in “\(name)”."))
+                    .font(.callout)
+            }
+            HStack {
+                Spacer()
+                Button(L("Anuluj", "Cancel"), role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(L("Importuj", "Import")) { runImport() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(loaded == nil || target == nil)
+            }
+        }
+        .padding(20)
+        .frame(width: 520)
+        .onAppear { sources = ImportExport.detectSources() }
+        .onChange(of: selected) { load() }
+    }
+
+    private func folderTitle(_ s: ImportExport.Source) -> String {
+        let date = Date.now.formatted(Date.FormatStyle(date: .numeric, time: .omitted).locale(AppLanguage.locale))
+        return s.kind == .html ? L("Z pliku \(s.file.deletingPathExtension().lastPathComponent) – \(date)", "From file \(s.file.deletingPathExtension().lastPathComponent) – \(date)")
+                               : L("Z \(s.kind.rawValue) – \(s.profile) – \(date)", "From \(s.kind.rawValue) – \(s.profile) – \(date)")
+    }
+
+    private func chooseFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.html]
+        panel.message = L("Wybierz plik z zakładkami wyeksportowany z przeglądarki.", "Choose a bookmarks file exported from a browser.")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let s = ImportExport.Source(kind: .html, file: url, profile: "")
+        sources.removeAll { $0.kind == .html }
+        sources.append(s)
+        selected = s
+    }
+
+    private func load() {
+        loaded = nil
+        error = nil
+        guard let selected else { return }
+        do { loaded = try ImportExport.load(selected) } catch { self.error = error.localizedDescription }
+    }
+
+    private func runImport() {
+        guard let loaded, let selected, let target else { return }
+        if let id = store.importBookmarks(loaded, folderTitle: folderTitle(selected), into: target) {
+            ui.folderID = target
+            ui.selection = [id]
+        }
+        dismiss()
+    }
+}
+
 // MARK: - Informacje
 
 struct InfoSheet: View {

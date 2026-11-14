@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0 – 2026-11-14
+
+- Bookmarks → Import Bookmarks…: from Chrome, Edge (all profiles, with their names) and Firefox (all profiles, read from a copy of its database, so Firefox may stay open), or from an HTML bookmarks file. Only reads the other browser. Imported bookmarks go into a new folder in the open folder (or Favorites) as one undoable step; empty folders, separators and internal browser pages are skipped.
+- Bookmarks → Export All Bookmarks… / Export Open Folder…: HTML bookmarks file for Chrome, Edge and Firefox (Favorites marked as the bookmarks bar, dates added kept). The Reading List is not exported.
+
 ## 1.6.0 – 2026-11-14
 
 - Bookmarks → Check Links…: visits every bookmark (without cookies or saved logins, 8 at a time, only the start of each answer) and sorts the problems into: permanently moved (new address suggested), works over https (https suggested), dead (page or domain gone), unsure (login, blocking, server error, no answer). Address fixes are pre-checked, deletions are not; Apply makes one undoable step for the addresses and one for deletions. Skip hides a bookmark from future checks. The Reading List is not checked.
